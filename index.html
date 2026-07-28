@@ -142,6 +142,7 @@ body{background:var(--bm-bg)}
 #bhAutoRows .bhProfitPos,#bhAutoFoot .bhProfitPos{color:#059669!important;font-weight:900}
 </style>
 
+<meta name="mulia-persistent-login" content="enabled-until-logout">
 </head>
 <body>
 
@@ -277,8 +278,8 @@ function decodeHtml(b64){const bin=atob(b64);const bytes=new Uint8Array(bin.leng
 function loadFrame(id,b64){const f=document.getElementById(id);if(f.dataset.loaded==='1')return;f.srcdoc=decodeHtml(b64);f.dataset.loaded='1';setTimeout(()=>applyToChild(f),500)}
 function applyToChild(f){try{if(f.contentWindow && typeof f.contentWindow.portalApplySession==='function')f.contentWindow.portalApplySession();}catch(e){}}
 function applyAllChildren(){document.querySelectorAll('iframe').forEach(applyToChild)}
-async function portalLogin(){const v=document.getElementById('portalPass').value;const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));const h=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');if(h===PORTAL_PASS_HASH){sessionStorage.setItem('PORTAL_OK','1');document.getElementById('portalLogin').style.display='none';openApp('dashboard');}else document.getElementById('portalErr').style.display='block';}
-function portalLogout(){sessionStorage.removeItem('PORTAL_OK');sessionStorage.removeItem('PORTAL_GOOGLE_TOKEN');sessionStorage.removeItem('PORTAL_GOOGLE_EMAIL');sessionStorage.removeItem('ok');location.reload();}
+async function portalLogin(){const v=document.getElementById('portalPass').value;const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));const h=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');if(h===PORTAL_PASS_HASH){localStorage.setItem('PORTAL_OK','1');document.getElementById('portalLogin').style.display='none';openApp('dashboard');}else document.getElementById('portalErr').style.display='block';}
+function portalLogout(){localStorage.removeItem('PORTAL_OK');sessionStorage.removeItem('PORTAL_GOOGLE_TOKEN');sessionStorage.removeItem('PORTAL_GOOGLE_EMAIL');sessionStorage.removeItem('ok');location.reload();}
 function updatePortalGoogleUi(){const ok=!!window.PORTAL_ACCESS_TOKEN;document.getElementById('portalDot').classList.toggle('on',ok);document.getElementById('portalGoogleStatus').textContent=ok?'Login: '+(window.PORTAL_GOOGLE_EMAIL||'Google aktif'):'Google belum login';applyAllChildren();}
 function portalClearGoogleToken(){
   window.PORTAL_ACCESS_TOKEN='';
@@ -866,7 +867,7 @@ window.addEventListener('error',e=>{console.error('Portal error:',e.error||e.mes
 (function(){
   'use strict';
   function restorePortalSession(){
-    const loggedIn = sessionStorage.getItem('PORTAL_OK') === '1';
+    const loggedIn = localStorage.getItem('PORTAL_OK') === '1';
     const login = document.getElementById('portalLogin');
     if (!loggedIn) {
       if (login) login.style.display = 'flex';
