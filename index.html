@@ -1424,5 +1424,114 @@ function borOpenPrint(h){let f=document.createElement('iframe');f.style.cssText=
 </script>
 
 
+
+<!-- MULIA GROUP INTEGRATION PATCH V3.0 - preserves identity and original database keys -->
+<script id="mulia-integration-v3">
+(function(){
+'use strict';
+if(window.__MULIA_INTEGRATION_V3__) return;
+window.__MULIA_INTEGRATION_V3__=true;
+const C={"code": "BM", "name": "BERKAH MULIA ADV", "sales": "BM_SALES_DB_V1", "kas": "BM_KAS_BESAR_IMPORT_EXCEL_V1", "hr": "BM_ABSENSI_GAJI_V4", "enterprise": "BM_ENTERPRISE_V1", "profit": "BM_PROFIT_SHARING_V1", "borongan": "BM_BORONGAN_V1", "out": "Berkah_Mulia_ADV_TERINTEGRASI.html"};
+const MONTHS=['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
+const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??f}catch(e){return f}};
+const write=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));};
+const norm=s=>String(s||'').trim().toUpperCase();
+const docNo=d=>String(d.no||d.number||d.nomor||d.invoiceNo||d.quoteNo||'').trim();
+const customer=d=>String(d.customer||d.customerName||d.namaCustomer||d.client||'').trim();
+const subject=d=>String(d.subject||d.perihal||d.description||d.keterangan||'').trim();
+function itemsTotal(d){return (Array.isArray(d?.items)?d.items:[]).reduce((s,x)=>s+num(x.qty??x.quantity??x.jumlah)*num(x.price??x.unitPrice??x.harga),0)}
+function total(d){const direct=num(d?.grandTotal??d?.total??d?.amount??d?.nilai);if(direct)return direct;let s=itemsTotal(d);if(norm(d?.ppnMode)==='EXCLUSIVE')s+=s*num(d?.ppnPct??d?.taxPercent)/100;return s}
+function paid(d,t=total(d)){if(norm(d?.status)==='LUNAS')return t;if(Array.isArray(d?.pembayaran))return d.pembayaran.reduce((s,p)=>s+num(p?.amount??p?.nominal??p?.value),0);return Math.max(0,num(d?.totalPaid??d?.paidAmount??d?.terbayar??d?.dpAmount??d?.dp))}
+function isoDate(v){const d=new Date(v||Date.now());return isNaN(d)?new Date().toISOString().slice(0,10):d.toISOString().slice(0,10)}
+function monthKey(v){const d=new Date(v||Date.now());return MONTHS[(isNaN(d)?new Date():d).getMonth()]}
+function statusStage(q,inv){
+ const s=norm(inv?.projectStatus||inv?.pipelineStatus||inv?.status||q?.projectStatus||q?.pipelineStatus||q?.status);
+ if(/BATAL/.test(s))return 'Batal';
+ if(/SELESAI|CLOSED/.test(s))return 'Selesai';
+ if(/LUNAS/.test(s))return 'Selesai';
+ if(/KIRIM/.test(s))return 'Pengiriman';
+ if(/PASANG/.test(s))return 'Pemasangan';
+ if(/QC|QUALITY/.test(s))return 'QC';
+ if(/PRODUKSI|PROSES|WORK/.test(s))return 'Produksi';
+ if(inv)return paid(inv)>0?'Pembayaran':'PO/Invoice';
+ if(/DEAL|PO|SPK|ACC|SETUJU/.test(s))return 'PO/Invoice';
+ return 'Penawaran';
+}
+function ensureInvoiceFromDeal(){
+ const db=read(C.sales,{quotes:[],invoices:[]});db.quotes=Array.isArray(db.quotes)?db.quotes:[];db.invoices=Array.isArray(db.invoices)?db.invoices:[];
+ let changed=false;
+ db.quotes.forEach(q=>{
+   const st=norm(q.status||q.dealStatus||q.pipelineStatus);
+   if(!/DEAL|PO|SPK|ACC|SETUJU/.test(st))return;
+   const qn=docNo(q), exists=db.invoices.some(i=>String(i.sourceQuoteNo||i.quoteNo||'')===qn || (qn&&docNo(i)===qn.replace(/SPH|QUO|PEN/gi,'INV')));
+   if(exists)return;
+   const now=new Date(), seq=String(db.invoices.length+1).padStart(4,'0');
+   const inv={...q,id:'INV-'+Date.now()+'-'+seq,no:'INV-'+now.getFullYear()+'-'+seq,number:'INV-'+now.getFullYear()+'-'+seq,type:'INVOICE',status:'BELUM BAYAR',sourceQuoteNo:qn,sourceQuoteId:q.id||'',createdAt:now.toISOString(),updatedAt:now.toISOString(),totalPaid:0};
+   delete inv.dealStatus;
+   db.invoices.push(inv);changed=true;
+ });
+ if(changed){write(C.sales,db);dispatch('sales-to-invoice');}
+ return changed;
+}
+function ensureCashShape(db){db=db&&typeof db==='object'?db:{};db.transactions=db.transactions||{};return db}
+function syncInvoicePaymentsToCash(){
+ const sales=read(C.sales,{quotes:[],invoices:[]}), invoices=Array.isArray(sales.invoices)?sales.invoices:[];
+ let kas=ensureCashShape(read(C.kas,{})), changed=false;
+ invoices.forEach(inv=>{
+   const invNo=docNo(inv)||String(inv.id||'INV');
+   const payments=Array.isArray(inv.pembayaran)&&inv.pembayaran.length?inv.pembayaran.map((p,i)=>({amount:num(p.amount??p.nominal??p.value),date:p.date??p.tanggal??inv.updatedAt??inv.date,key:String(p.id||i)})):[{amount:paid(inv),date:inv.paymentDate??inv.updatedAt??inv.date,key:'TOTAL'}];
+   payments.filter(p=>p.amount>0).forEach(p=>{
+     const sourceKey='INVOICE_PAYMENT|'+invNo+'|'+p.key+'|'+p.amount;
+     const mk=monthKey(p.date);kas.transactions[mk]=kas.transactions[mk]||{pemasukan:[],operasional:[]};kas.transactions[mk].pemasukan=Array.isArray(kas.transactions[mk].pemasukan)?kas.transactions[mk].pemasukan:[];
+     const all=Object.values(kas.transactions).flatMap(m=>Array.isArray(m?.pemasukan)?m.pemasukan:[]);
+     if(all.some(x=>x.sourceKey===sourceKey))return;
+     kas.transactions[mk].pemasukan.push({date:isoDate(p.date),description:'Pembayaran Invoice '+invNo+(customer(inv)?' - '+customer(inv):''),amount:p.amount,source:'INVOICE',sourceKey,invoiceNo:invNo,customer:customer(inv),syncedAt:new Date().toISOString()});changed=true;
+   });
+ });
+ if(changed){write(C.kas,kas);dispatch('invoice-to-cash');}
+ return changed;
+}
+function buildPipeline(){
+ const sales=read(C.sales,{quotes:[],invoices:[]}),quotes=Array.isArray(sales.quotes)?sales.quotes:[],invoices=Array.isArray(sales.invoices)?sales.invoices:[];
+ const old=read(C.enterprise,{projects:[]});const manual=(Array.isArray(old.projects)?old.projects:[]).filter(x=>!x.integrationManaged);
+ const rows=[];const used=new Set();
+ quotes.forEach(q=>{
+   const qn=docNo(q), inv=invoices.find(i=>String(i.sourceQuoteNo||i.quoteNo||'')===qn)||(qn?invoices.find(i=>docNo(i)===qn.replace(/SPH|QUO|PEN/gi,'INV')):null);
+   if(inv)used.add(inv);
+   rows.push({id:'PIPE-Q-'+(q.id||qn||rows.length),name:subject(q)||qn||'Pekerjaan',customer:customer(q),status:statusStage(q,inv),value:total(inv||q),quoteNo:qn,invoiceNo:inv?docNo(inv):'',paid:inv?paid(inv):0,outstanding:inv?Math.max(0,total(inv)-paid(inv)):0,integrationManaged:true,updatedAt:new Date().toISOString()});
+ });
+ invoices.filter(i=>!used.has(i)).forEach(i=>rows.push({id:'PIPE-I-'+(i.id||docNo(i)||rows.length),name:subject(i)||docNo(i)||'Pekerjaan',customer:customer(i),status:statusStage(null,i),value:total(i),quoteNo:String(i.sourceQuoteNo||''),invoiceNo:docNo(i),paid:paid(i),outstanding:Math.max(0,total(i)-paid(i)),integrationManaged:true,updatedAt:new Date().toISOString()}));
+ old.projects=[...manual,...rows];old.updatedAt=new Date().toISOString();write(C.enterprise,old);return old;
+}
+function monthSummary(kas,m){const t=kas?.transactions?.[m]||{};const sum=a=>(Array.isArray(a)?a:[]).reduce((s,x)=>s+num(x.amount??x.nominal??x.total),0);let income=sum(t.pemasukan),expense=sum(t.operasional)+sum(t.pengeluaran);if(C.borongan)expense+=sum(t.indra)+sum(t.andre)+sum(t.borongan);return {income,expense,profit:income-expense}}
+function publishSnapshot(){
+ const sales=read(C.sales,{quotes:[],invoices:[]}),kas=read(C.kas,{}),hr=read(C.hr,{}),ent=read(C.enterprise,{projects:[]}),profit=read(C.profit,{});
+ const invoices=Array.isArray(sales.invoices)?sales.invoices:[], quotes=Array.isArray(sales.quotes)?sales.quotes:[];
+ let income=0,expense=0;MONTHS.forEach(m=>{const x=monthSummary(kas,m);income+=x.income;expense+=x.expense});
+ const snap={schema:'MULIA_OWNER_SNAPSHOT_V3',companyCode:C.code,companyName:C.name,updatedAt:new Date().toISOString(),sales:{quotations:quotes.length,quoteValue:quotes.reduce((s,x)=>s+total(x),0),invoices:invoices.length,invoiceValue:invoices.reduce((s,x)=>s+total(x),0),paid:invoices.reduce((s,x)=>s+paid(x),0),receivable:invoices.reduce((s,x)=>s+Math.max(0,total(x)-paid(x)),0)},cash:{income,expense,closingBalance:income-expense,monthly:Object.fromEntries(MONTHS.map(m=>[m,monthSummary(kas,m)]))},payroll:{employees:Array.isArray(hr.employees)?hr.employees.length:0,period:hr.period||''},pipeline:{projects:Array.isArray(ent.projects)?ent.projects:[]},profitSharing:profit,features:{borongan:!!C.borongan},sourceKeys:C};
+ localStorage.setItem(C.code+'_OWNER_SNAPSHOT_V3',JSON.stringify(snap));window.MULIA_OWNER_SNAPSHOT=snap;window.dispatchEvent(new CustomEvent('muliaOwnerSnapshotUpdated',{detail:snap}));
+ return snap;
+}
+function dispatch(reason){localStorage.setItem(C.code+'_INTEGRATION_UPDATED_AT',new Date().toISOString());window.dispatchEvent(new CustomEvent('portalDataChanged',{detail:{reason}}));setTimeout(()=>{try{window.renderEnterprise?.();window.repaint?.();window.bhRenderSimple?.()}catch(e){}},30)}
+let busy=false,last='';
+function run(){
+ if(busy)return;busy=true;
+ try{
+   ensureInvoiceFromDeal();syncInvoicePaymentsToCash();buildPipeline();publishSnapshot();
+   const fingerprint=[localStorage.getItem(C.sales)||'',localStorage.getItem(C.kas)||'',localStorage.getItem(C.hr)||'',C.borongan?(localStorage.getItem(C.borongan)||''):''].join('|');
+   if(fingerprint!==last){last=fingerprint;dispatch('realtime-refresh')}
+ }catch(e){console.error('Mulia integration V3',e)}
+ finally{busy=false}
+}
+window.MuliaIntegrationV3={run,ensureInvoiceFromDeal,syncInvoicePaymentsToCash,buildPipeline,publishSnapshot,config:C};
+window.addEventListener('storage',e=>{if([C.sales,C.kas,C.hr,C.borongan].filter(Boolean).includes(e.key))setTimeout(run,20)});
+window.addEventListener('message',()=>setTimeout(run,20));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)run()});
+document.addEventListener('DOMContentLoaded',()=>{run();setInterval(run,5000)});
+setTimeout(run,500);
+})();
+</script>
+
 </body>
 </html>
