@@ -143,6 +143,7 @@ body{background:var(--bm-bg)}
 </style>
 
 <meta name="mulia-persistent-login" content="enabled-until-logout">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -165,6 +166,7 @@ body{background:var(--bm-bg)}
   <button id="btnKas" class="tabBtn" onclick="openApp('kas')">💰 Kas Besar</button>
   <button id="btnBorongan" class="tabBtn" onclick="openApp('borongan')">🛠️ Borongan</button>
   <button id="btnBagiHasil" class="tabBtn" onclick="openApp('bagihasil')">🤝 Bagi Hasil</button>
+  <button id="btnMigrasiPeriode" class="tabBtn" onclick="openApp('migrasiperiode')">🗓️ Migrasi & Periode</button>
   <details class="cloudMenu">
     <summary class="topBtn">⚙️ Data & Cloud</summary>
     <div class="cloudPanel">
@@ -340,13 +342,13 @@ async function portalEnsureGoogleToken(){
   return await loginGooglePortal({prompt:'consent'});
 }
 function openApp(app){
-  const apps=['dashboard','penawaran','invoice','kas','absensi','borongan','bagihasil'];
+  const apps=['dashboard','penawaran','invoice','kas','absensi','borongan','bagihasil','migrasiperiode'];
   if(!apps.includes(app))app='dashboard';
   document.querySelectorAll('.commandPage,.appFrame').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tabBtn').forEach(x=>x.classList.remove('active'));
-  const map={dashboard:'pageDashboard',penawaran:'framePenawaran',invoice:'framePenawaran',kas:'frameKas',absensi:'frameAbsensi',borongan:'pageBorongan',bagihasil:'pageBagiHasil'};
+  const map={dashboard:'pageDashboard',penawaran:'framePenawaran',invoice:'framePenawaran',kas:'frameKas',absensi:'frameAbsensi',borongan:'pageBorongan',bagihasil:'pageBagiHasil',migrasiperiode:'pageMigrasiPeriode'};
   const target=document.getElementById(map[app]);if(target)target.classList.add('active');
-  const btnMap={dashboard:'btnDashboard',penawaran:'btnPenawaran',invoice:'btnPenawaran',kas:'btnKas',absensi:'btnAbsensi',borongan:'btnBorongan',bagihasil:'btnBagiHasil'};
+  const btnMap={dashboard:'btnDashboard',penawaran:'btnPenawaran',invoice:'btnPenawaran',kas:'btnKas',absensi:'btnAbsensi',borongan:'btnBorongan',bagihasil:'btnBagiHasil',migrasiperiode:'btnMigrasiPeriode'};
   const btn=document.getElementById(btnMap[app]);if(btn)btn.classList.add('active');
   if(app==='bagihasil' && typeof bhRenderSimple==='function') setTimeout(bhRenderSimple,0);
   if(app==='penawaran'||app==='invoice'){
@@ -358,6 +360,7 @@ function openApp(app){
   if(app==='dashboard'){try{window.MuliaUnifiedSync?.refresh()}catch(e){};try{renderEnterprise()}catch(e){}}
   if(app==='borongan'){try{borInit()}catch(e){console.error(e)}}
   if(app==='bagihasil'){try{bhRenderSimple()}catch(e){console.error(e)}}
+  if(app==='migrasiperiode'){try{mpInit()}catch(e){console.error(e)}}
   sessionStorage.setItem('BERKAH_MULIA_PORTAL_LAST_APP',app);
   applyAllChildren();
 }
@@ -1532,6 +1535,43 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)run()});
 document.addEventListener('DOMContentLoaded',()=>{run();setInterval(run,5000)});
 setTimeout(run,500);
 })();
+</script>
+
+
+<style id="migration-period-v1-css">
+#pageMigrasiPeriode{max-width:1400px}.mpHero{display:flex;justify-content:space-between;gap:18px;align-items:center;background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;border-radius:18px;padding:22px 24px;margin-bottom:14px}.mpHero h1{margin:5px 0;font-size:29px}.mpHero p{margin:0;color:#cbd5e1}.mpEyebrow{font-size:10px;font-weight:900;letter-spacing:.12em;color:#93c5fd}.mpActivePeriod{min-width:230px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:13px;border-radius:14px}.mpActivePeriod label,.mpFields label{display:block;font-size:10px;font-weight:900;text-transform:uppercase;margin-bottom:5px}.mpActivePeriod input,.mpFields input,#mpPreviewSheet{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a}.mpActivePeriod small{display:block;margin-top:6px;color:#bfdbfe}.mpGrid4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:13px}.mpMetric{background:#fff;border:1px solid #e2e8f0;border-top:4px solid #2563eb;border-radius:15px;padding:15px}.mpMetric small{display:block;color:#64748b;font-weight:900;text-transform:uppercase}.mpMetric b{display:block;font-size:22px;margin-top:7px}.mpGrid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}.mpCard{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 6px 18px rgba(15,23,42,.05);margin-bottom:13px}.mpCard h3{margin:0 0 11px}.mpMuted{color:#64748b;font-size:12px;line-height:1.5}.mpFileBtn{display:inline-block;background:#eff6ff;color:#1d4ed8;border:1px dashed #60a5fa;padding:13px 16px;border-radius:12px;font-weight:900;cursor:pointer}.mpFileBtn input{display:none}.mpActions{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}.mpBtn{border:0;border-radius:10px;padding:10px 13px;font-weight:900;cursor:pointer;background:#e2e8f0;color:#0f172a}.mpBlue{background:#2563eb;color:#fff}.mpGreen{background:#059669;color:#fff}.mpOrange{background:#d97706;color:#fff}.mpNotice{padding:11px 12px;border-radius:11px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:800}.mpNotice.ok{background:#dcfce7;color:#047857}.mpNotice.bad{background:#fee2e2;color:#b91c1c}.mpRule{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px}.mpRule span{color:#64748b}.mpSplitTitle{display:flex;justify-content:space-between;align-items:center;gap:12px}.mpSplitTitle h3{margin-bottom:2px}.mpSplitTitle select{max-width:240px}.mpTableWrap{overflow:auto;max-height:420px;border:1px solid #e2e8f0;border-radius:12px}.mpTable{width:100%;border-collapse:collapse;font-size:11px}.mpTable th,.mpTable td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}.mpTable th{position:sticky;top:0;background:#eff6ff;z-index:1}.mpFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mpChecklist{display:grid;gap:8px;margin:13px 0;font-size:12px}.mpObligationSummary{display:grid;gap:8px;margin-bottom:12px}.mpObligation{display:flex;justify-content:space-between;padding:10px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc;font-size:12px}.mpObligation b{color:#b45309}.mpObligation b.ok{color:#047857}@media(max-width:900px){.mpGrid4{grid-template-columns:repeat(2,1fr)}.mpGrid2{grid-template-columns:1fr}.mpHero{align-items:flex-start;flex-direction:column}.mpActivePeriod{width:100%}}@media(max-width:560px){.mpGrid4,.mpFields{grid-template-columns:1fr}.mpSplitTitle{align-items:flex-start;flex-direction:column}.mpSplitTitle select{max-width:none}}
+</style>
+
+
+<script id="migration-period-v1-js">
+const MP_STORE='BM_MIGRATION_PERIOD_V1';
+const MP_GLOBAL='BM_GLOBAL_PERIOD_V1';
+const MP_SHEETS=['Saldo_Awal','Histori_Bulanan','Piutang','Stok','Gaji','Borongan','Bagi_Hasil','Nomor_Terakhir','Checklist'];
+let mpStaging=null;
+function mpRead(){try{return JSON.parse(localStorage.getItem(MP_STORE)||'null')||{sheets:{},closedPeriods:{},meta:{}}}catch(e){return{sheets:{},closedPeriods:{},meta:{}}}}
+function mpWrite(v){localStorage.setItem(MP_STORE,JSON.stringify(v));localStorage.setItem('BM_PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());try{portalScheduleAutoBackup?.()}catch(e){}}
+function mpMoney(v){return 'Rp '+(Number(v)||0).toLocaleString('id-ID')}
+function mpCleanRows(rows){return (rows||[]).filter(r=>Object.values(r||{}).some(v=>v!==''&&v!==null&&v!==undefined)).map(r=>{const o={};Object.entries(r).forEach(([k,v])=>{if(k&&String(k).trim())o[String(k).trim()]=v});return o})}
+function mpNormalizeDate(v){if(!v)return '';if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`}return String(v)}
+function mpImportExcel(ev){
+ const f=ev.target.files?.[0];if(!f)return;
+ if(!window.XLSX){mpStatus('Library Excel gagal dimuat. Pastikan internet aktif saat pertama membuka aplikasi.','bad');return}
+ const reader=new FileReader();reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});const sheets={};const missing=[];MP_SHEETS.forEach(n=>{const ws=wb.Sheets[n];if(!ws){missing.push(n);sheets[n]=[];return}let rows=XLSX.utils.sheet_to_json(ws,{range:2,defval:'',raw:true});rows=mpCleanRows(rows).map(r=>{Object.keys(r).forEach(k=>{if(/tanggal|jatuh tempo/i.test(k))r[k]=mpNormalizeDate(r[k])});return r});sheets[n]=rows});mpStaging={sheets,meta:{fileName:f.name,importedAt:new Date().toISOString()},missing};mpStatus(`Template dibaca: ${f.name}. ${missing.length?'Sheet belum ditemukan: '+missing.join(', '):'Semua sheet tersedia.'}`,missing.length?'bad':'ok');mpPopulateSheetSelect(sheets);mpRenderPreview();mpRenderMetrics(mpStaging)}catch(err){console.error(err);mpStatus('Gagal membaca Excel: '+err.message,'bad')}};reader.readAsArrayBuffer(f)
+}
+function mpStatus(t,c=''){const el=document.getElementById('mpImportStatus');if(el){el.textContent=t;el.className='mpNotice '+c}}
+function mpPopulateSheetSelect(sheets){const el=document.getElementById('mpPreviewSheet');if(!el)return;el.innerHTML=Object.keys(sheets||{}).map(n=>`<option value="${n}">${n} (${(sheets[n]||[]).length})</option>`).join('')}
+function mpRenderPreview(){const n=document.getElementById('mpPreviewSheet')?.value;const rows=(mpStaging?.sheets?.[n]||mpRead().sheets?.[n]||[]).slice(0,100);const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))];const h=document.getElementById('mpPreviewHead'),b=document.getElementById('mpPreviewBody');if(!h||!b)return;h.innerHTML=keys.length?`<tr>${keys.map(k=>`<th>${k}</th>`).join('')}</tr>`:'';b.innerHTML=rows.length?rows.map(r=>`<tr>${keys.map(k=>`<td>${r[k]??''}</td>`).join('')}</tr>`).join(''):'<tr><td>Belum ada data.</td></tr>'}
+function mpValidateData(){if(!mpStaging)return mpStatus('Pilih template Excel terlebih dahulu.','bad');const errors=[];const s=mpStaging.sheets||{};(s.Histori_Bulanan||[]).forEach((r,i)=>{if(!/^\d{4}-\d{2}$/.test(String(r.Periode||'')))errors.push(`Histori baris ${i+4}: periode tidak valid`)});['Gaji','Borongan','Bagi_Hasil'].forEach(n=>(s[n]||[]).forEach((r,i)=>{if(!r.Periode)errors.push(`${n} baris ${i+4}: periode kosong`);if(!r['Status Bayar'])errors.push(`${n} baris ${i+4}: status bayar kosong`)}));if(errors.length){mpStatus(`Validasi menemukan ${errors.length} masalah. ${errors.slice(0,3).join(' • ')}`,'bad');return false}mpStatus('Validasi berhasil. Data siap disimpan ke ERP.','ok');return true}
+function mpCommitImport(){if(!mpValidateData())return;const current=mpRead();const next={...current,sheets:mpStaging.sheets,meta:{...mpStaging.meta,committedAt:new Date().toISOString()},closedPeriods:current.closedPeriods||{}};mpWrite(next);mpStatus('Data migrasi berhasil disimpan. Histori tidak dibuat sebagai transaksi kas baru.','ok');mpRenderMetrics(next);mpRenderObligations();try{window.MuliaUnifiedSync?.refresh()}catch(e){}}
+function mpSaveGlobalPeriod(){const v=document.getElementById('mpGlobalPeriod')?.value||'';localStorage.setItem(MP_GLOBAL,v);localStorage.setItem('BM_PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());document.getElementById('mpPeriodHint').textContent=`Periode default tersimpan: ${v}`}
+function mpRenderMetrics(data=mpRead()){const s=data.sheets||{};const saldo=(s.Saldo_Awal||[]).reduce((z,r)=>z+(Number(r['Saldo Debit'])||0)-(Number(r['Saldo Kredit'])||0),0);const piutang=(s.Piutang||[]).reduce((z,r)=>z+(Number(r['Sisa Piutang'])||Math.max(0,(Number(r['Nilai Invoice'])||0)-(Number(r['Sudah Dibayar'])||0))),0);const stok=(s.Stok||[]).reduce((z,r)=>z+(Number(r['Nilai Stok'])||((Number(r['Qty Akhir'])||0)*(Number(r['Harga Rata-rata'])||0))),0);const hist=(s.Histori_Bulanan||[]).length;const el=document.getElementById('mpMetrics');if(el)el.innerHTML=[["Saldo Bersih Awal",mpMoney(saldo)],["Piutang Berjalan",mpMoney(piutang)],["Nilai Stok",mpMoney(stok)],["Histori Bulanan",hist+' periode']].map(x=>`<div class="mpMetric"><small>${x[0]}</small><b>${x[1]}</b></div>`).join('')}
+function mpClosePeriod(){const p=document.getElementById('mpClosingPeriod')?.value,d=document.getElementById('mpPaymentDate')?.value;const ok=['mpC1','mpC2','mpC3','mpC4'].every(id=>document.getElementById(id)?.checked);const st=document.getElementById('mpClosingStatus');if(!p||!d||!ok){st.textContent='Lengkapi periode, tanggal pembayaran, dan seluruh checklist.';st.className='mpNotice bad';return}const db=mpRead();db.closedPeriods=db.closedPeriods||{};db.closedPeriods[p]={status:'MENUNGGU PEMBAYARAN',closedAt:new Date().toISOString(),paymentDate:d,locked:true};mpWrite(db);st.textContent=`Periode ${p} dikunci. Kewajiban dijadwalkan dibayar ${d}.`;st.className='mpNotice ok';mpRenderObligations()}
+function mpObligationRows(p){const s=mpRead().sheets||{};return ['Gaji','Borongan','Bagi_Hasil'].map(n=>{const rows=(s[n]||[]).filter(r=>String(r.Periode||'')===p);const amount=rows.reduce((z,r)=>z+Number(r['Gaji Bersih']??r.Total??r['Nilai Hak']??0),0);const unpaid=rows.filter(r=>String(r['Status Bayar']||'').toUpperCase()!=='LUNAS').length;return{name:n,amount,unpaid,total:rows.length}})}
+function mpRenderObligations(){const p=document.getElementById('mpClosingPeriod')?.value||'2026-07';const rows=mpObligationRows(p);const el=document.getElementById('mpObligationSummary');if(el)el.innerHTML=rows.map(r=>`<div class="mpObligation"><span>${r.name} • ${r.unpaid}/${r.total} belum lunas</span><b class="${r.unpaid?'':'ok'}">${mpMoney(r.amount)}</b></div>`).join('')||'<div class="mpNotice">Belum ada kewajiban.</div>'}
+function mpMarkPeriodPaid(){const p=document.getElementById('mpClosingPeriod')?.value,d=document.getElementById('mpPaymentDate')?.value;if(!p||!d)return alert('Pilih periode dan tanggal pembayaran.');const db=mpRead();['Gaji','Borongan','Bagi_Hasil'].forEach(n=>{(db.sheets?.[n]||[]).forEach(r=>{if(String(r.Periode||'')===p){r['Status Bayar']='LUNAS';r['Tanggal Bayar']=d}})});if(db.closedPeriods?.[p])db.closedPeriods[p].status='CLOSED';mpWrite(db);document.getElementById('mpClosingStatus').textContent=`Periode ${p} telah lunas dan CLOSED pada ${d}.`;document.getElementById('mpClosingStatus').className='mpNotice ok';mpRenderObligations();mpRenderPreview()}
+function mpExportBackup(){const db=mpRead();const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_migrasi_erp_berkah_mulia_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function mpInit(){const db=mpRead();mpStaging=db;const gp=localStorage.getItem(MP_GLOBAL)||'2026-08';const pe=document.getElementById('mpGlobalPeriod');if(pe)pe.value=gp;mpPopulateSheetSelect(db.sheets||{});mpRenderPreview();mpRenderMetrics(db);mpRenderObligations();const cp=Object.keys(db.closedPeriods||{}).sort().pop();const st=document.getElementById('mpClosingStatus');if(cp&&st){const x=db.closedPeriods[cp];st.textContent=`Periode terakhir: ${cp} • ${x.status} • bayar ${x.paymentDate||'-'}`;st.className='mpNotice '+(x.status==='CLOSED'?'ok':'')}}
+window.addEventListener('load',()=>{try{mpInit()}catch(e){console.error(e)}});
 </script>
 
 </body>
