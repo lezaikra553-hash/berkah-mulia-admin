@@ -656,7 +656,20 @@ portalStartSyncWatcher();
 if(window.PORTAL_ACCESS_TOKEN){setTimeout(portalSmartSyncAfterLogin,1200);}
 
 
-const ENT_KEY='DMA_ENTERPRISE_V2';let ent;try{ent=JSON.parse(localStorage.getItem(ENT_KEY)||'null')}catch(e){ent=null}if(!ent||typeof ent!=='object')ent={projects:[],purchasing:[],inventory:[],tasks:[],audit:[]};['projects','purchasing','inventory','tasks','audit'].forEach(k=>{if(!Array.isArray(ent[k]))ent[k]=[]});let currentOps='projects';
+const ENT_KEY='BM_ENTERPRISE_V2';
+/* SAFE COMPATIBILITY PATCH: do not delete/overwrite legacy data. Copy only when BM key is empty. */
+try{
+ const bmExisting=localStorage.getItem(ENT_KEY);
+ const legacyDma=localStorage.getItem('DMA_ENTERPRISE_V2');
+ if(!bmExisting && legacyDma){
+  const parsed=JSON.parse(legacyDma);
+  if(parsed && typeof parsed==='object'){
+   localStorage.setItem(ENT_KEY,legacyDma);
+   localStorage.setItem('BM_ENTERPRISE_MIGRATED_FROM_DMA_AT',new Date().toISOString());
+  }
+ }
+}catch(e){console.warn('Berkah enterprise compatibility migration skipped',e)}
+let ent;try{ent=JSON.parse(localStorage.getItem(ENT_KEY)||'null')}catch(e){ent=null}if(!ent||typeof ent!=='object')ent={projects:[],purchasing:[],inventory:[],tasks:[],audit:[]};['projects','purchasing','inventory','tasks','audit'].forEach(k=>{if(!Array.isArray(ent[k]))ent[k]=[]});let currentOps='projects';
 function saveEnt(action='Data diperbarui'){ent.audit.unshift({at:new Date().toISOString(),action});ent.audit=ent.audit.slice(0,200);localStorage.setItem(ENT_KEY,JSON.stringify(ent));localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());renderOps();renderEnterprise();toast(action)}
 function money(n){return 'Rp '+Number(n||0).toLocaleString('id-ID')}
 function renderEnterprise(){
