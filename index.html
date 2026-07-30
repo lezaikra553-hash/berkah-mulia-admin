@@ -1232,7 +1232,7 @@ window.addEventListener('storage',e=>{if(['BM_V3_FRESH_KAS_ACTIVE_DB','BM_V3_FRE
 'use strict';
 if(window.__MULIA_INTEGRATION_V3__) return;
 window.__MULIA_INTEGRATION_V3__=true;
-const C={"code": "BM", "name": "CV. BERKAH MULIA ADV", "sales": "BM_SALES_DB_V1", "kas": "BM_KAS_BESAR_ACTIVE_DB", "hr": "BM_ABSENSI_GAJI_V4", "enterprise": "BM_ENTERPRISE_V2", "profit": "BM_BAGI_HASIL_SIMPLE_V1", "borongan": null, "out": "BERKAH_MULIA_V3"};
+const C={"code":"BM","name":"CV. BERKAH MULIA ADV","sales":"BM_V3_FRESH_SALES_DB_V1","salesAlias":"BM_SALES_DB_V1","kas":"BM_V3_FRESH_KAS_ACTIVE_DB","kasFallback":"BM_V3_FRESH_KAS_BESAR","kasAlias":"BM_KAS_BESAR_ACTIVE_DB","hr":"BM_V3_FRESH_ABSENSI_GAJI_V1","hrAlias":"BM_ABSENSI_GAJI_V4","enterprise":"BM_ENTERPRISE_V2","profit":"BM_BAGI_HASIL_SIMPLE_V1","borongan":null,"out":"BERKAH_MULIA_V3_FIXED"};
 const MONTHS=['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
 const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??f}catch(e){return f}};
@@ -1272,25 +1272,51 @@ function ensureInvoiceFromDeal(){
    delete inv.dealStatus;
    db.invoices.push(inv);changed=true;
  });
- if(changed){write(C.sales,db);dispatch('sales-to-invoice');}
+ if(changed){writeBerkahSales(db);dispatch('sales-to-invoice');}
  return changed;
 }
-function ensureCashShape(db){db=db&&typeof db==='object'?db:{};db.transactions=db.transactions||{};return db}
+function ensureCashShape(db){db=db&&typeof db==='object'?db:{};db.transactions=db.transactions&&typeof db.transactions==='object'?db.transactions:{};return db}
+function writeBerkahSales(db){write(C.sales,db);if(C.salesAlias)write(C.salesAlias,db)}
+function writeBerkahCash(db){write(C.kas,db);if(C.kasFallback)write(C.kasFallback,db);if(C.kasAlias)write(C.kasAlias,db)}
+function writeBerkahHR(db){write(C.hr,db);if(C.hrAlias)write(C.hrAlias,db)}
 function syncInvoicePaymentsToCash(){
- const sales=read(C.sales,{quotes:[],invoices:[]}), invoices=Array.isArray(sales.invoices)?sales.invoices:[];
- let kas=ensureCashShape(read(C.kas,{})), changed=false;
+ const sales=read(C.sales,read(C.salesAlias,{quotes:[],invoices:[]})), invoices=Array.isArray(sales.invoices)?sales.invoices:[];
+ let kas=ensureCashShape(read(C.kas,read(C.kasFallback,read(C.kasAlias,{}))));
+ const before=JSON.stringify(kas.transactions||{});
+ /* Rekonsiliasi penuh: hapus hanya transaksi otomatis invoice, lalu bangun ulang dari pembayaran terbaru. */
+ Object.keys(kas.transactions).forEach(m=>{
+   const row=kas.transactions[m]&&typeof kas.transactions[m]==='object'?kas.transactions[m]:{};
+   row.pemasukan=(Array.isArray(row.pemasukan)?row.pemasukan:[]).filter(x=>String(x?.source||'').toUpperCase()!=='INVOICE' && !String(x?.sourceKey||'').startsWith('INVOICE_PAYMENT|'));
+   kas.transactions[m]=row;
+ });
  invoices.forEach(inv=>{
    const invNo=docNo(inv)||String(inv.id||'INV');
-   const payments=Array.isArray(inv.pembayaran)&&inv.pembayaran.length?inv.pembayaran.map((p,i)=>({amount:num(p.amount??p.nominal??p.value),date:p.date??p.tanggal??inv.updatedAt??inv.date,key:String(p.id||i)})):[{amount:paid(inv),date:inv.paymentDate??inv.updatedAt??inv.date,key:'TOTAL'}];
-   payments.filter(p=>p.amount>0).forEach(p=>{
-     const sourceKey='INVOICE_PAYMENT|'+invNo+'|'+p.key+'|'+p.amount;
-     const mk=monthKey(p.date);kas.transactions[mk]=kas.transactions[mk]||{pemasukan:[],operasional:[]};kas.transactions[mk].pemasukan=Array.isArray(kas.transactions[mk].pemasukan)?kas.transactions[mk].pemasukan:[];
-     const all=Object.values(kas.transactions).flatMap(m=>Array.isArray(m?.pemasukan)?m.pemasukan:[]);
-     if(all.some(x=>x.sourceKey===sourceKey))return;
-     kas.transactions[mk].pemasukan.push({date:isoDate(p.date),description:'Pembayaran Invoice '+invNo+(customer(inv)?' - '+customer(inv):''),amount:p.amount,source:'INVOICE',sourceKey,invoiceNo:invNo,customer:customer(inv),syncedAt:new Date().toISOString()});changed=true;
+   const rawPayments=Array.isArray(inv.pembayaran)&&inv.pembayaran.length
+     ? inv.pembayaran.map((p,i)=>({amount:num(p?.amount??p?.nominal??p?.value),date:p?.date??p?.tanggal??inv.updatedAt??inv.date,key:String(p?.id??p?.paymentId??i)}))
+     : [{amount:paid(inv),date:inv.paymentDate??inv.updatedAt??inv.date,key:'TOTAL'}];
+   rawPayments.filter(p=>p.amount>0).forEach(p=>{
+     const paymentDate=isoDate(p.date), mk=monthKey(paymentDate);
+     kas.transactions[mk]=kas.transactions[mk]||{pemasukan:[],operasional:[]};
+     kas.transactions[mk].pemasukan=Array.isArray(kas.transactions[mk].pemasukan)?kas.transactions[mk].pemasukan:[];
+     const sourceKey='INVOICE_PAYMENT|'+invNo+'|'+p.key;
+     kas.transactions[mk].pemasukan.push({
+       date:paymentDate,
+       description:'Pembayaran Invoice '+invNo+(customer(inv)?' - '+customer(inv):''),
+       amount:p.amount,
+       source:'INVOICE',
+       sourceKey,
+       invoiceNo:invNo,
+       customer:customer(inv),
+       paymentKey:p.key,
+       syncedAt:new Date().toISOString()
+     });
    });
  });
- if(changed){write(C.kas,kas);dispatch('invoice-to-cash');}
+ const after=JSON.stringify(kas.transactions||{}), changed=before!==after;
+ /* Selalu samakan database Kas utama, fallback, dan alias agar semua modul membaca data identik. */
+ writeBerkahCash(kas);
+ if(C.salesAlias)write(C.salesAlias,sales);
+ if(changed)dispatch('invoice-to-cash-reconciled');
  return changed;
 }
 function buildPipeline(){
