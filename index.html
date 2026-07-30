@@ -114,7 +114,7 @@
   </div>
 </div>
 <div class="portalTop">
-  <div class="brand">BERKAH MULIA ADV <span class="portalVersion">ERP V3 • FRESH INSTALL</span><small>Penawaran & Invoice • Kas Besar • Absensi & Penggajian</small></div>
+  <div class="brand">BERKAH MULIA ADV <span class="portalVersion">ERP V3 • OWNER SYNC FIXED</span><small>Penawaran & Invoice • Kas Besar • Absensi & Penggajian</small></div>
   <button id="btnDashboard" class="tabBtn active" onclick="openApp('dashboard')">📊 Dashboard</button>
 <button id="btnPenawaran" class="tabBtn" onclick="openApp('penawaran')">📄 Penawaran & Invoice</button>
   <button id="btnKas" class="tabBtn" onclick="openApp('kas')">💰 Kas Besar</button>
@@ -292,7 +292,7 @@ function openApp(app){
    4) Auto backup ke Google Drive saat data lokal berubah.
    ========================================================== */
 const PORTAL_SYNC_FILE = 'berkah_mulia_portal_v3_sync_latest.json';
-const PORTAL_SYNC_VERSION = 'SYNC_V4_PENAWARAN_KAS_ABSENSI_2026_07';
+const PORTAL_SYNC_VERSION = 'SYNC_V5_BERKAH_OWNER_READY_2026_07';
 let portalSyncTimer = null;
 let portalUploadTimer = null;
 let portalLastHash = '';
@@ -304,19 +304,20 @@ function portalSetStatus(txt, ok=false){
   if(st) st.textContent=txt;
   if(dot) dot.classList.toggle('on', !!ok);
 }
-const DWI_SYNC_EXACT_KEYS = new Set([
-  'BM_V3_FRESH_SALES_DB_V1','DMA_BAGI_HASIL_SIMPLE_V1','DM_COMPANY_CODE',
-  'DM_COMPANY_CONTRACT_V1','DM_SCHEMA_VERSION','BM_V3_FRESH_KAS_ACTIVE_DB',
-  'BM_V3_KAS_LAST_SAVED_AT','BM_V3_FRESH_KAS_BESAR','DMA_ENTERPRISE_V2',
-  'BM_V3_FRESH_ABSENSI_GAJI_V1','BM_V3_UNUSED_OLD_ABSENSI',
+const BERKAH_SYNC_EXACT_KEYS = new Set([
+  'BM_V3_FRESH_SALES_DB_V1','BM_SALES_DB_V1','BM_BAGI_HASIL_SIMPLE_V1','BM_COMPANY_CODE',
+  'BM_COMPANY_CONTRACT_V1','BM_COMPANY_CONTRACT_V2','BM_SCHEMA_VERSION','BM_V3_FRESH_KAS_ACTIVE_DB',
+  'BM_KAS_BESAR_ACTIVE_DB','BM_KAS_BESAR_IMPORT_EXCEL_V1','BM_V3_KAS_LAST_SAVED_AT','BM_V3_FRESH_KAS_BESAR',
+  'BM_ENTERPRISE_V1','BM_ENTERPRISE_V2','BM_V3_FRESH_ABSENSI_GAJI_V1','BM_V3_UNUSED_OLD_ABSENSI',
+  'BM_ABSENSI_GAJI_V3','BM_ABSENSI_GAJI_V4','BM_OWNER_SNAPSHOT_V1','BM_OWNER_SNAPSHOT_V3',
   'BM_V3_PAYROLL_SYNC_STATUS_V1'
 ]);
 function portalSyncAllowedKey(k){
   if(typeof k!=='string') return false;
   if(k.includes('GOOGLE_TOKEN') || k.includes('PORTAL_GOOGLE_TOKEN') || k.includes('PORTAL_OK')) return false;
-  return DWI_SYNC_EXACT_KEYS.has(k) || k.startsWith('DMA_') || k.startsWith('DM_') || k.startsWith('dwi_');
+  return BERKAH_SYNC_EXACT_KEYS.has(k) || k.startsWith('BM_') || k.startsWith('BERKAH_') || k.startsWith('berkah_');
 }
-function portalClearDwiStorage(){
+function portalClearBerkahStorage(){
   const remove=[];
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i);
@@ -432,7 +433,27 @@ function portalSyncPayrollFromStorage(silent=true){
  catch(e){if(!silent)alert('Data absensi gagal dibaca: '+e.message);return {ok:false,error:e.message}}
 }
 
+function portalPrepareOwnerAliases(){
+  const copy=(from,to)=>{const v=localStorage.getItem(from);if(v!=null)localStorage.setItem(to,v)};
+  copy('BM_V3_FRESH_SALES_DB_V1','BM_SALES_DB_V1');
+  copy('BM_V3_FRESH_KAS_ACTIVE_DB','BM_KAS_BESAR_ACTIVE_DB');
+  copy('BM_V3_FRESH_KAS_BESAR','BM_KAS_BESAR_ACTIVE_DB');
+  copy('BM_V3_FRESH_ABSENSI_GAJI_V1','BM_ABSENSI_GAJI_V4');
+  copy('BM_V3_UNUSED_OLD_ABSENSI','BM_ABSENSI_GAJI_V4');
+  if(!localStorage.getItem('BM_ENTERPRISE_V2')) localStorage.setItem('BM_ENTERPRISE_V2',JSON.stringify({projects:[],updatedAt:new Date().toISOString()}));
+  if(!localStorage.getItem('BM_BAGI_HASIL_SIMPLE_V1')){
+    const old=localStorage.getItem('BM_V3_BAGI_HASIL_SIMPLE_APRIL_2026_V1');
+    localStorage.setItem('BM_BAGI_HASIL_SIMPLE_V1',old||JSON.stringify({shares:[{name:'Kas',percent:30},{name:'Sentot',percent:10},{name:'Aziz',percent:60}],period:'2026-04'}));
+  }
+  const contract={schema:'MULIA_COMPANY_CONTRACT_V2',companyCode:'BERKAH',companyName:'CV. BERKAH MULIA ADV',storage:{sales:'BM_SALES_DB_V1',cash:'BM_KAS_BESAR_ACTIVE_DB',payroll:'BM_ABSENSI_GAJI_V4',enterprise:'BM_ENTERPRISE_V2',profit:'BM_BAGI_HASIL_SIMPLE_V1',ownerSnapshot:'BM_OWNER_SNAPSHOT_V1'},updatedAt:new Date().toISOString()};
+  localStorage.setItem('BM_COMPANY_CONTRACT_V2',JSON.stringify(contract));
+  localStorage.setItem('BM_COMPANY_CODE','BERKAH');
+  localStorage.setItem('BM_SCHEMA_VERSION','OWNER_READER_V1');
+  try{window.MuliaGroupBridge?.publish?.()}catch(e){console.warn('Owner bridge publish warning',e)}
+  try{window.MuliaIntegrationV3?.publishSnapshot?.()}catch(e){console.warn('Owner snapshot publish warning',e)}
+}
 function portalCollectStorage(){
+  portalPrepareOwnerAliases();
   const data={};
   try{
     for(let i=0;i<localStorage.length;i++){
@@ -504,8 +525,8 @@ function portalApplyStorage(data){
   if(!data || typeof data!=='object') throw new Error('Format data restore tidak valid.');
   const clean={};
   Object.entries(data).forEach(([k,v])=>{if(portalSyncAllowedKey(k) && typeof v==='string') clean[k]=v;});
-  if(!Object.keys(clean).length) throw new Error('Backup tidak berisi data resmi DWI. Restore dibatalkan.');
-  portalClearDwiStorage();
+  if(!Object.keys(clean).length) throw new Error('Backup tidak berisi data resmi Berkah Mulia. Restore dibatalkan.');
+  portalClearBerkahStorage();
   Object.entries(clean).forEach(([k,v])=>localStorage.setItem(k,v));
   localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT', new Date().toISOString());
 
@@ -529,7 +550,7 @@ async function portalBackupNow(show=true){
     const h=await portalHashSnapshot(data);
     const payload={
       version:PORTAL_SYNC_VERSION,
-      companyCode:'DWI',
+      companyCode:'BERKAH',
       companyName:'BERKAH MULIA ADV',
       schemaVersion:'OWNER_READER_V1',
       syncFile:PORTAL_SYNC_FILE,
@@ -880,9 +901,9 @@ window.addEventListener('error',e=>{console.error('Portal error:',e.error||e.mes
   const CONTRACT=Object.freeze({companyCode:"BERKAH",companyName:"BERKAH MULIA ADV",syncFile:"berkah_mulia_portal_v3_sync_latest.json",schemaVersion:'OWNER_READER_V1',migrationStatus:"HISTORICAL_MIXED_DO_NOT_DELETE"});
   window.MULIA_COMPANY_CONTRACT=CONTRACT;
   try{
-    localStorage.setItem('DM_COMPANY_CONTRACT_V1',JSON.stringify(CONTRACT));
-    localStorage.setItem('DM_COMPANY_CODE',CONTRACT.companyCode);
-    localStorage.setItem('DM_SCHEMA_VERSION',CONTRACT.schemaVersion);
+    localStorage.setItem('BM_COMPANY_CONTRACT_V1',JSON.stringify(CONTRACT));
+    localStorage.setItem('BM_COMPANY_CODE',CONTRACT.companyCode);
+    localStorage.setItem('BM_SCHEMA_VERSION',CONTRACT.schemaVersion);
   }catch(e){console.warn('Company contract storage warning',e);}
 })();
 </script>
@@ -913,7 +934,7 @@ setTimeout(refreshDwiDashboard,300);
 <script id="mulia-master-contract-v2">
 (function(){
 "use strict";
-const CFG = {"out": "/mnt/data/dwi_FINAL_SERAGAM_OWNER_READY.html", "code": "DM", "name": "BERKAH MULIA ADV", "sales": "BM_V3_FRESH_SALES_DB_V1", "kas": "BM_V3_FRESH_KAS_ACTIVE_DB", "hr": "DMA_ABSENSI_GAJI_V4", "contract": "DM_COMPANY_CONTRACT_V2", "snapshot": "DM_OWNER_SNAPSHOT_V1"};
+const CFG = {"out": "BERKAH_MULIA_V3", "code": "BERKAH", "name": "CV. BERKAH MULIA ADV", "sales": "BM_SALES_DB_V1", "kas": "BM_KAS_BESAR_ACTIVE_DB", "hr": "BM_ABSENSI_GAJI_V4", "contract": "BM_COMPANY_CONTRACT_V2", "snapshot": "BM_OWNER_SNAPSHOT_V1"};
 
 function readJSON(key, fallback){
   try{
@@ -956,11 +977,13 @@ function outstanding(inv){
   return Math.max(0,total-paidAmount(inv,total));
 }
 function normalizeDwiAliases(){
-  if(CFG.code !== "DM") return;
   const aliases = [
+    ["BM_V3_FRESH_SALES_DB_V1", CFG.sales],
+    ["BM_V3_FRESH_KAS_ACTIVE_DB", CFG.kas],
+    ["BM_V3_FRESH_KAS_BESAR", CFG.kas],
     ["BM_V3_FRESH_ABSENSI_GAJI_V1", CFG.hr],
     ["BM_V3_UNUSED_OLD_ABSENSI", CFG.hr],
-    ["DM_COMPANY_CONTRACT_V1", CFG.contract]
+    ["BM_COMPANY_CONTRACT_V1", CFG.contract]
   ];
   aliases.forEach(function(pair){
     const oldKey=pair[0], newKey=pair[1];
@@ -1196,7 +1219,7 @@ window.addEventListener('storage',e=>{if(['BM_V3_FRESH_KAS_ACTIVE_DB','BM_V3_FRE
 'use strict';
 if(window.__MULIA_INTEGRATION_V3__) return;
 window.__MULIA_INTEGRATION_V3__=true;
-const C={"code": "DM", "name": "BERKAH MULIA ADV", "sales": "BM_V3_FRESH_SALES_DB_V1", "kas": "BM_V3_FRESH_KAS_ACTIVE_DB", "hr": "DMA_ABSENSI_GAJI_V4", "enterprise": "DMA_ENTERPRISE_V1", "profit": "DMA_PROFIT_SHARING_V1", "borongan": null, "out": "Dwi_Mulia_Advertising_TERINTEGRASI.html"};
+const C={"code": "BM", "name": "CV. BERKAH MULIA ADV", "sales": "BM_SALES_DB_V1", "kas": "BM_KAS_BESAR_ACTIVE_DB", "hr": "BM_ABSENSI_GAJI_V4", "enterprise": "BM_ENTERPRISE_V2", "profit": "BM_BAGI_HASIL_SIMPLE_V1", "borongan": null, "out": "BERKAH_MULIA_V3"};
 const MONTHS=['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
 const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const read=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??f}catch(e){return f}};
@@ -1275,7 +1298,7 @@ function publishSnapshot(){
  const invoices=Array.isArray(sales.invoices)?sales.invoices:[], quotes=Array.isArray(sales.quotes)?sales.quotes:[];
  let income=0,expense=0;MONTHS.forEach(m=>{const x=monthSummary(kas,m);income+=x.income;expense+=x.expense});
  const snap={schema:'MULIA_OWNER_SNAPSHOT_V3',companyCode:C.code,companyName:C.name,updatedAt:new Date().toISOString(),sales:{quotations:quotes.length,quoteValue:quotes.reduce((s,x)=>s+total(x),0),invoices:invoices.length,invoiceValue:invoices.reduce((s,x)=>s+total(x),0),paid:invoices.reduce((s,x)=>s+paid(x),0),receivable:invoices.reduce((s,x)=>s+Math.max(0,total(x)-paid(x)),0)},cash:{income,expense,closingBalance:income-expense,monthly:Object.fromEntries(MONTHS.map(m=>[m,monthSummary(kas,m)]))},payroll:{employees:Array.isArray(hr.employees)?hr.employees.length:0,period:hr.period||''},pipeline:{projects:Array.isArray(ent.projects)?ent.projects:[]},profitSharing:profit,features:{borongan:!!C.borongan},sourceKeys:C};
- localStorage.setItem(C.code+'_OWNER_SNAPSHOT_V3',JSON.stringify(snap));window.MULIA_OWNER_SNAPSHOT=snap;window.dispatchEvent(new CustomEvent('muliaOwnerSnapshotUpdated',{detail:snap}));
+ localStorage.setItem('BM_OWNER_SNAPSHOT_V3',JSON.stringify(snap));localStorage.setItem('BM_OWNER_SNAPSHOT_V1',JSON.stringify(snap));window.MULIA_OWNER_SNAPSHOT=snap;window.dispatchEvent(new CustomEvent('muliaOwnerSnapshotUpdated',{detail:snap}));
  return snap;
 }
 function dispatch(reason){localStorage.setItem(C.code+'_INTEGRATION_UPDATED_AT',new Date().toISOString());window.dispatchEvent(new CustomEvent('portalDataChanged',{detail:{reason}}));setTimeout(()=>{try{window.renderEnterprise?.();window.repaint?.();window.bhRenderSimple?.()}catch(e){}},30)}
