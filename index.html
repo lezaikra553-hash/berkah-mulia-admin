@@ -1,11 +1,34 @@
 <!DOCTYPE html>
-<!-- FIX: Dashboard Dwi membaca akumulasi keseluruhan data, bukan hanya bulan berjalan. -->
+<!-- ERP BERKAH MULIA V3.0 STABLE - clean start and migration page fixed. -->
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BERKAH MULIA ADV - Admin Application</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script id="bm-clean-start-v3">
+(function(){
+  const MARKER='BM_CLEAN_START_V3_20260730_DONE';
+  if(localStorage.getItem(MARKER)==='1') return;
+  const explicit=[
+    'BM_SALES_DB_V1','BM_ABSENSI_GAJI_V3','BM_ABSENSI_GAJI_V4',
+    'BERKAH_MULIA_ABSENSI_MONTHLY_ARCHIVE_V1',
+    'BERKAH_MULIA_ADV_BORONGAN_PRODUKSI_V2','BERKAH_MULIA_BORONGAN_V1',
+    'BERKAH_BORONGAN_KAS_SYNC','BM_BAGI_HASIL_SIMPLE_V1',
+    'BM_MIGRATION_PERIOD_V1','BM_GLOBAL_PERIOD_V1','BM_UNIFIED_MASTER_V3',
+    'BM_ENTERPRISE_V2','BM_COMPANY_CONTRACT_V1','BM_KAS_BESAR_IMPORT_EXCEL_V1',
+    'BM_KAS_IMPORT_EXCEL_V1','BM_KAS_LAST_SAVED_AT','BM_PORTAL_SYNC_LAST_HASH',
+    'BM_PORTAL_SYNC_LOCAL_UPDATED_AT','PORTAL_SYNC_LOCAL_UPDATED_AT',
+    'BERKAH_MULIA_ADV_SYNC_RC2_OWNER_INVESTOR_READY_2026_08','BM_MIGRATED_V1'
+  ];
+  const patterns=[/^BM_(?!CLEAN_START)/i,/^BERKAH_/i,/^BERKAH M/i,/^PORTAL_SYNC_/i,/^kasBesarBM_/i];
+  const keys=[]; for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
+  keys.forEach(k=>{ if(explicit.includes(k)||patterns.some(r=>r.test(k))) localStorage.removeItem(k); });
+  explicit.forEach(k=>localStorage.removeItem(k));
+  localStorage.setItem(MARKER,'1');
+})();
+</script>
+
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,system-ui,sans-serif;background:#0f172a;color:#0f172a}
 .portalTop{position:fixed;top:0;left:0;right:0;height:64px;background:#0f172a;color:#fff;z-index:999999;display:flex;align-items:center;gap:10px;padding:8px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25)}
@@ -144,6 +167,10 @@ body{background:var(--bm-bg)}
 
 <meta name="mulia-persistent-login" content="enabled-until-logout">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style id="migration-period-v3-fix-css">
+.mpGrid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}.mpCard{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(15,23,42,.05);margin-bottom:13px}.mpCard h3{margin:0 0 8px}.mpMuted{font-size:12px;color:#64748b}.mpActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.mpNotice{padding:10px 12px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:700}.mpNotice.ok{background:#dcfce7;color:#047857}.mpNotice.bad{background:#fee2e2;color:#b91c1c}.mpFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mpChecks{display:grid;gap:7px;margin:12px 0;font-size:12px}.mpSplitTitle{display:flex;justify-content:space-between;gap:10px;align-items:center}.mpSplitTitle select{max-width:330px;width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:10px}.mpTableWrap{overflow:auto;max-height:430px}.mpTable{width:100%;border-collapse:collapse;font-size:12px}.mpTable th,.mpTable td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}.mpTable th{background:#f8fafc;position:sticky;top:0}.mpMetric{background:#fff;border:1px solid #e2e8f0;border-left:5px solid #2563eb;border-radius:15px;padding:15px}.mpMetric small{display:block;color:#64748b;font-weight:900;text-transform:uppercase;font-size:10px}.mpMetric b{display:block;font-size:20px;margin-top:6px}.mpObligation{display:flex;justify-content:space-between;padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;margin-top:7px;font-size:12px;background:#f8fafc}@media(max-width:900px){.mpGrid2{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
@@ -159,7 +186,7 @@ body{background:var(--bm-bg)}
   </div>
 </div>
 <div class="portalTop">
-  <div class="brand">BERKAH MULIA <span class="portalVersion">ERP V2 DASHBOARD DWI</span><small>Penawaran & Invoice • Absensi & Gaji • Borongan • Kas Besar</small></div>
+  <div class="brand">BERKAH MULIA <span class="portalVersion">ERP V3.0 BERKAH STABLE</span><small>Penawaran & Invoice • Absensi & Gaji • Borongan • Kas Besar</small></div>
   <button id="btnDashboard" class="tabBtn active" onclick="openApp('dashboard')">📊 Dashboard</button>
   <button id="btnPenawaran" class="tabBtn" onclick="openApp('penawaran')">📄 Penawaran</button>
   <button id="btnAbsensi" class="tabBtn" onclick="openApp('absensi')">👷 Absensi & Penggajian</button>
@@ -261,6 +288,35 @@ body{background:var(--bm-bg)}
       <div style="overflow:auto"><table class="borTable"><thead><tr><th>Nama</th><th>Keterangan</th><th>Jumlah</th><th>Harga Satuan</th><th>Total Harga</th><th>Aksi</th></tr></thead><tbody id="borRows"></tbody><tfoot id="borFoot"></tfoot></table></div>
     </div>
     <div class="borCard"><h3>Total Keseluruhan per Orang</h3><div style="overflow:auto"><table class="borTable"><thead><tr><th>Nama</th><th>Total Jumlah</th><th>Total Borongan</th></tr></thead><tbody id="borPersonRows"></tbody></table></div></div>
+  </section>
+
+  <section id="pageMigrasiPeriode" class="commandPage">
+    <div class="mpHero">
+      <div><div class="mpEyebrow">BERKAH MULIA • MIGRASI DATA</div><h1>Migrasi & Periode</h1><p>Import Excel migrasi, periksa data, simpan ke ERP, dan tutup periode.</p></div>
+      <div class="mpActivePeriod"><label>Periode aktif</label><input id="mpGlobalPeriod" type="month" value="2026-07"><button class="smallBtn primary" style="margin-top:8px;width:100%" onclick="mpSaveGlobalPeriod()">Simpan Periode</button><small id="mpPeriodHint">Pilih periode kerja aplikasi.</small></div>
+    </div>
+    <div id="mpMetrics" class="mpGrid4"></div>
+    <div class="mpGrid2">
+      <div class="mpCard">
+        <h3>1. Import Excel Migrasi</h3>
+        <p class="mpMuted">Gunakan file Excel Migrasi ERP Berkah Mulia. Data baru disimpan setelah tombol Simpan ke ERP ditekan.</p>
+        <input type="file" accept=".xlsx,.xls" onchange="mpImportExcel(event)">
+        <div class="mpActions"><button class="smallBtn" onclick="mpValidateData()">Periksa Data</button><button class="smallBtn primary" onclick="mpCommitImport()">Simpan ke ERP</button><button class="smallBtn" onclick="mpExportBackup()">Backup Migrasi JSON</button></div>
+        <div id="mpImportStatus" class="mpNotice">Belum ada file Excel dipilih.</div>
+      </div>
+      <div class="mpCard">
+        <h3>2. Tutup Periode</h3>
+        <div class="mpFields"><div><label>Periode</label><input id="mpClosingPeriod" type="month" value="2026-07" onchange="mpRenderObligations()"></div><div><label>Tanggal pembayaran</label><input id="mpPaymentDate" type="date"></div></div>
+        <div class="mpChecks"><label><input id="mpC1" type="checkbox"> Kas sudah direkonsiliasi</label><label><input id="mpC2" type="checkbox"> Payroll sudah diperiksa</label><label><input id="mpC3" type="checkbox"> Borongan sudah diperiksa</label><label><input id="mpC4" type="checkbox"> Bagi hasil sudah diperiksa</label></div>
+        <div id="mpObligationSummary"></div>
+        <div class="mpActions"><button class="smallBtn primary" onclick="mpClosePeriod()">Kunci Periode</button><button class="smallBtn" onclick="mpMarkPeriodPaid()">Tandai Lunas & Closed</button></div>
+        <div id="mpClosingStatus" class="mpNotice">Belum ada periode yang ditutup.</div>
+      </div>
+    </div>
+    <div class="mpCard">
+      <div class="mpSplitTitle"><div><h3>Preview Data Migrasi</h3><p class="mpMuted">Menampilkan maksimal 100 baris per sheet.</p></div><select id="mpPreviewSheet" onchange="mpRenderPreview()"></select></div>
+      <div class="mpTableWrap"><table class="mpTable"><thead id="mpPreviewHead"></thead><tbody id="mpPreviewBody"><tr><td>Belum ada data.</td></tr></tbody></table></div>
+    </div>
   </section>
 <iframe id="framePenawaran" class="appFrame" title="Penawaran Invoice"></iframe>
   <iframe id="frameKas" class="appFrame" title="Kas Besar"></iframe>
@@ -1574,5 +1630,15 @@ function mpInit(){const db=mpRead();mpStaging=db;const gp=localStorage.getItem(M
 window.addEventListener('load',()=>{try{mpInit()}catch(e){console.error(e)}});
 </script>
 
+
+<script id="bm-nav-dedupe-v3">
+window.addEventListener('DOMContentLoaded',()=>{
+ const seen=new Set();
+ document.querySelectorAll('.portalTop button').forEach(b=>{
+   const key=(b.id||'')+'|'+(b.getAttribute('onclick')||'')+'|'+b.textContent.trim();
+   if(seen.has(key)) b.remove(); else seen.add(key);
+ });
+});
+</script>
 </body>
 </html>
