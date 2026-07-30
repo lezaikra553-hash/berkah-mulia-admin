@@ -1,34 +1,11 @@
 <!DOCTYPE html>
-<!-- ERP BERKAH MULIA V3.0 STABLE - clean start and migration page fixed. -->
+<!-- FIX: Dashboard Dwi membaca akumulasi keseluruhan data, bukan hanya bulan berjalan. -->
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BERKAH MULIA ADV - Admin Application</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script id="bm-clean-start-v3">
-(function(){
-  const MARKER='BM_CLEAN_START_V3_20260730_DONE';
-  if(localStorage.getItem(MARKER)==='1') return;
-  const explicit=[
-    'BM_SALES_DB_V1','BM_ABSENSI_GAJI_V3','BM_ABSENSI_GAJI_V4',
-    'BERKAH_MULIA_ABSENSI_MONTHLY_ARCHIVE_V1',
-    'BERKAH_MULIA_ADV_BORONGAN_PRODUKSI_V2','BERKAH_MULIA_BORONGAN_V1',
-    'BERKAH_BORONGAN_KAS_SYNC','BM_BAGI_HASIL_SIMPLE_V1',
-    'BM_MIGRATION_PERIOD_V1','BM_GLOBAL_PERIOD_V1','BM_UNIFIED_MASTER_V3',
-    'BM_ENTERPRISE_V2','BM_COMPANY_CONTRACT_V1','BM_KAS_BESAR_IMPORT_EXCEL_V1',
-    'BM_KAS_IMPORT_EXCEL_V1','BM_KAS_LAST_SAVED_AT','BM_PORTAL_SYNC_LAST_HASH',
-    'BM_PORTAL_SYNC_LOCAL_UPDATED_AT','PORTAL_SYNC_LOCAL_UPDATED_AT',
-    'BERKAH_MULIA_ADV_SYNC_RC2_OWNER_INVESTOR_READY_2026_08','BM_MIGRATED_V1'
-  ];
-  const patterns=[/^BM_(?!CLEAN_START)/i,/^BERKAH_/i,/^BERKAH M/i,/^PORTAL_SYNC_/i,/^kasBesarBM_/i];
-  const keys=[]; for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
-  keys.forEach(k=>{ if(explicit.includes(k)||patterns.some(r=>r.test(k))) localStorage.removeItem(k); });
-  explicit.forEach(k=>localStorage.removeItem(k));
-  localStorage.setItem(MARKER,'1');
-})();
-</script>
-
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,system-ui,sans-serif;background:#0f172a;color:#0f172a}
 .portalTop{position:fixed;top:0;left:0;right:0;height:64px;background:#0f172a;color:#fff;z-index:999999;display:flex;align-items:center;gap:10px;padding:8px 14px;box-shadow:0 4px 18px rgba(0,0,0,.25)}
@@ -166,11 +143,6 @@ body{background:var(--bm-bg)}
 </style>
 
 <meta name="mulia-persistent-login" content="enabled-until-logout">
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-<style id="migration-period-v3-fix-css">
-.mpGrid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}.mpCard{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(15,23,42,.05);margin-bottom:13px}.mpCard h3{margin:0 0 8px}.mpMuted{font-size:12px;color:#64748b}.mpActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.mpNotice{padding:10px 12px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:700}.mpNotice.ok{background:#dcfce7;color:#047857}.mpNotice.bad{background:#fee2e2;color:#b91c1c}.mpFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mpChecks{display:grid;gap:7px;margin:12px 0;font-size:12px}.mpSplitTitle{display:flex;justify-content:space-between;gap:10px;align-items:center}.mpSplitTitle select{max-width:330px;width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:10px}.mpTableWrap{overflow:auto;max-height:430px}.mpTable{width:100%;border-collapse:collapse;font-size:12px}.mpTable th,.mpTable td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}.mpTable th{background:#f8fafc;position:sticky;top:0}.mpMetric{background:#fff;border:1px solid #e2e8f0;border-left:5px solid #2563eb;border-radius:15px;padding:15px}.mpMetric small{display:block;color:#64748b;font-weight:900;text-transform:uppercase;font-size:10px}.mpMetric b{display:block;font-size:20px;margin-top:6px}.mpObligation{display:flex;justify-content:space-between;padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;margin-top:7px;font-size:12px;background:#f8fafc}@media(max-width:900px){.mpGrid2{grid-template-columns:1fr}}
-</style>
 </head>
 <body>
 
@@ -186,14 +158,13 @@ body{background:var(--bm-bg)}
   </div>
 </div>
 <div class="portalTop">
-  <div class="brand">BERKAH MULIA <span class="portalVersion">ERP V3.1 IMPORT FIXED</span><small>Penawaran & Invoice • Absensi & Gaji • Borongan • Kas Besar</small></div>
+  <div class="brand">BERKAH MULIA <span class="portalVersion">ERP V2 DASHBOARD DWI</span><small>Penawaran & Invoice • Absensi & Gaji • Borongan • Kas Besar</small></div>
   <button id="btnDashboard" class="tabBtn active" onclick="openApp('dashboard')">📊 Dashboard</button>
   <button id="btnPenawaran" class="tabBtn" onclick="openApp('penawaran')">📄 Penawaran</button>
   <button id="btnAbsensi" class="tabBtn" onclick="openApp('absensi')">👷 Absensi & Penggajian</button>
   <button id="btnKas" class="tabBtn" onclick="openApp('kas')">💰 Kas Besar</button>
   <button id="btnBorongan" class="tabBtn" onclick="openApp('borongan')">🛠️ Borongan</button>
   <button id="btnBagiHasil" class="tabBtn" onclick="openApp('bagihasil')">🤝 Bagi Hasil</button>
-  <button id="btnMigrasiPeriode" class="tabBtn" onclick="openApp('migrasiperiode')">🗓️ Migrasi & Periode</button>
   <details class="cloudMenu">
     <summary class="topBtn">⚙️ Data & Cloud</summary>
     <div class="cloudPanel">
@@ -289,35 +260,6 @@ body{background:var(--bm-bg)}
     </div>
     <div class="borCard"><h3>Total Keseluruhan per Orang</h3><div style="overflow:auto"><table class="borTable"><thead><tr><th>Nama</th><th>Total Jumlah</th><th>Total Borongan</th></tr></thead><tbody id="borPersonRows"></tbody></table></div></div>
   </section>
-
-  <section id="pageMigrasiPeriode" class="commandPage">
-    <div class="mpHero">
-      <div><div class="mpEyebrow">BERKAH MULIA • MIGRASI DATA</div><h1>Migrasi & Periode</h1><p>Import Excel migrasi, periksa data, simpan ke ERP, dan tutup periode.</p></div>
-      <div class="mpActivePeriod"><label>Periode aktif</label><input id="mpGlobalPeriod" type="month" value="2026-07"><button class="smallBtn primary" style="margin-top:8px;width:100%" onclick="mpSaveGlobalPeriod()">Simpan Periode</button><small id="mpPeriodHint">Pilih periode kerja aplikasi.</small></div>
-    </div>
-    <div id="mpMetrics" class="mpGrid4"></div>
-    <div class="mpGrid2">
-      <div class="mpCard">
-        <h3>1. Import Excel Migrasi</h3>
-        <p class="mpMuted">Gunakan file Excel Migrasi ERP Berkah Mulia. Data baru disimpan setelah tombol Simpan ke ERP ditekan.</p>
-        <input type="file" accept=".xlsx,.xls" onchange="mpImportExcel(event)">
-        <div class="mpActions"><button class="smallBtn" onclick="mpValidateData()">Periksa Data</button><button class="smallBtn primary" onclick="mpCommitImport()">Simpan ke ERP</button><button class="smallBtn" onclick="mpExportBackup()">Backup Migrasi JSON</button></div>
-        <div id="mpImportStatus" class="mpNotice">Belum ada file Excel dipilih.</div>
-      </div>
-      <div class="mpCard">
-        <h3>2. Tutup Periode</h3>
-        <div class="mpFields"><div><label>Periode</label><input id="mpClosingPeriod" type="month" value="2026-07" onchange="mpRenderObligations()"></div><div><label>Tanggal pembayaran</label><input id="mpPaymentDate" type="date"></div></div>
-        <div class="mpChecks"><label><input id="mpC1" type="checkbox"> Kas sudah direkonsiliasi</label><label><input id="mpC2" type="checkbox"> Payroll sudah diperiksa</label><label><input id="mpC3" type="checkbox"> Borongan sudah diperiksa</label><label><input id="mpC4" type="checkbox"> Bagi hasil sudah diperiksa</label></div>
-        <div id="mpObligationSummary"></div>
-        <div class="mpActions"><button class="smallBtn primary" onclick="mpClosePeriod()">Kunci Periode</button><button class="smallBtn" onclick="mpMarkPeriodPaid()">Tandai Lunas & Closed</button></div>
-        <div id="mpClosingStatus" class="mpNotice">Belum ada periode yang ditutup.</div>
-      </div>
-    </div>
-    <div class="mpCard">
-      <div class="mpSplitTitle"><div><h3>Preview Data Migrasi</h3><p class="mpMuted">Menampilkan maksimal 100 baris per sheet.</p></div><select id="mpPreviewSheet" onchange="mpRenderPreview()"></select></div>
-      <div class="mpTableWrap"><table class="mpTable"><thead id="mpPreviewHead"></thead><tbody id="mpPreviewBody"><tr><td>Belum ada data.</td></tr></tbody></table></div>
-    </div>
-  </section>
 <iframe id="framePenawaran" class="appFrame" title="Penawaran Invoice"></iframe>
   <iframe id="frameKas" class="appFrame" title="Kas Besar"></iframe>
   <iframe id="frameAbsensi" class="appFrame" title="Absensi dan Slip Gaji"></iframe>
@@ -398,13 +340,13 @@ async function portalEnsureGoogleToken(){
   return await loginGooglePortal({prompt:'consent'});
 }
 function openApp(app){
-  const apps=['dashboard','penawaran','invoice','kas','absensi','borongan','bagihasil','migrasiperiode'];
+  const apps=['dashboard','penawaran','invoice','kas','absensi','borongan','bagihasil'];
   if(!apps.includes(app))app='dashboard';
   document.querySelectorAll('.commandPage,.appFrame').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tabBtn').forEach(x=>x.classList.remove('active'));
-  const map={dashboard:'pageDashboard',penawaran:'framePenawaran',invoice:'framePenawaran',kas:'frameKas',absensi:'frameAbsensi',borongan:'pageBorongan',bagihasil:'pageBagiHasil',migrasiperiode:'pageMigrasiPeriode'};
+  const map={dashboard:'pageDashboard',penawaran:'framePenawaran',invoice:'framePenawaran',kas:'frameKas',absensi:'frameAbsensi',borongan:'pageBorongan',bagihasil:'pageBagiHasil'};
   const target=document.getElementById(map[app]);if(target)target.classList.add('active');
-  const btnMap={dashboard:'btnDashboard',penawaran:'btnPenawaran',invoice:'btnPenawaran',kas:'btnKas',absensi:'btnAbsensi',borongan:'btnBorongan',bagihasil:'btnBagiHasil',migrasiperiode:'btnMigrasiPeriode'};
+  const btnMap={dashboard:'btnDashboard',penawaran:'btnPenawaran',invoice:'btnPenawaran',kas:'btnKas',absensi:'btnAbsensi',borongan:'btnBorongan',bagihasil:'btnBagiHasil'};
   const btn=document.getElementById(btnMap[app]);if(btn)btn.classList.add('active');
   if(app==='bagihasil' && typeof bhRenderSimple==='function') setTimeout(bhRenderSimple,0);
   if(app==='penawaran'||app==='invoice'){
@@ -416,7 +358,6 @@ function openApp(app){
   if(app==='dashboard'){try{window.MuliaUnifiedSync?.refresh()}catch(e){};try{renderEnterprise()}catch(e){}}
   if(app==='borongan'){try{borInit()}catch(e){console.error(e)}}
   if(app==='bagihasil'){try{bhRenderSimple()}catch(e){console.error(e)}}
-  if(app==='migrasiperiode'){try{mpInit()}catch(e){console.error(e)}}
   sessionStorage.setItem('BERKAH_MULIA_PORTAL_LAST_APP',app);
   applyAllChildren();
 }
@@ -1593,112 +1534,5 @@ setTimeout(run,500);
 })();
 </script>
 
-
-<style id="migration-period-v1-css">
-#pageMigrasiPeriode{max-width:1400px}.mpHero{display:flex;justify-content:space-between;gap:18px;align-items:center;background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;border-radius:18px;padding:22px 24px;margin-bottom:14px}.mpHero h1{margin:5px 0;font-size:29px}.mpHero p{margin:0;color:#cbd5e1}.mpEyebrow{font-size:10px;font-weight:900;letter-spacing:.12em;color:#93c5fd}.mpActivePeriod{min-width:230px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:13px;border-radius:14px}.mpActivePeriod label,.mpFields label{display:block;font-size:10px;font-weight:900;text-transform:uppercase;margin-bottom:5px}.mpActivePeriod input,.mpFields input,#mpPreviewSheet{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#0f172a}.mpActivePeriod small{display:block;margin-top:6px;color:#bfdbfe}.mpGrid4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:13px}.mpMetric{background:#fff;border:1px solid #e2e8f0;border-top:4px solid #2563eb;border-radius:15px;padding:15px}.mpMetric small{display:block;color:#64748b;font-weight:900;text-transform:uppercase}.mpMetric b{display:block;font-size:22px;margin-top:7px}.mpGrid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}.mpCard{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 6px 18px rgba(15,23,42,.05);margin-bottom:13px}.mpCard h3{margin:0 0 11px}.mpMuted{color:#64748b;font-size:12px;line-height:1.5}.mpFileBtn{display:inline-block;background:#eff6ff;color:#1d4ed8;border:1px dashed #60a5fa;padding:13px 16px;border-radius:12px;font-weight:900;cursor:pointer}.mpFileBtn input{display:none}.mpActions{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}.mpBtn{border:0;border-radius:10px;padding:10px 13px;font-weight:900;cursor:pointer;background:#e2e8f0;color:#0f172a}.mpBlue{background:#2563eb;color:#fff}.mpGreen{background:#059669;color:#fff}.mpOrange{background:#d97706;color:#fff}.mpNotice{padding:11px 12px;border-radius:11px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:800}.mpNotice.ok{background:#dcfce7;color:#047857}.mpNotice.bad{background:#fee2e2;color:#b91c1c}.mpRule{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px}.mpRule span{color:#64748b}.mpSplitTitle{display:flex;justify-content:space-between;align-items:center;gap:12px}.mpSplitTitle h3{margin-bottom:2px}.mpSplitTitle select{max-width:240px}.mpTableWrap{overflow:auto;max-height:420px;border:1px solid #e2e8f0;border-radius:12px}.mpTable{width:100%;border-collapse:collapse;font-size:11px}.mpTable th,.mpTable td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}.mpTable th{position:sticky;top:0;background:#eff6ff;z-index:1}.mpFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mpChecklist{display:grid;gap:8px;margin:13px 0;font-size:12px}.mpObligationSummary{display:grid;gap:8px;margin-bottom:12px}.mpObligation{display:flex;justify-content:space-between;padding:10px;border:1px solid #e2e8f0;border-radius:11px;background:#f8fafc;font-size:12px}.mpObligation b{color:#b45309}.mpObligation b.ok{color:#047857}@media(max-width:900px){.mpGrid4{grid-template-columns:repeat(2,1fr)}.mpGrid2{grid-template-columns:1fr}.mpHero{align-items:flex-start;flex-direction:column}.mpActivePeriod{width:100%}}@media(max-width:560px){.mpGrid4,.mpFields{grid-template-columns:1fr}.mpSplitTitle{align-items:flex-start;flex-direction:column}.mpSplitTitle select{max-width:none}}
-</style>
-
-
-<script id="migration-period-v2-js">
-const MP_STORE='BM_MIGRATION_PERIOD_V2';
-const MP_GLOBAL='BM_GLOBAL_PERIOD_V1';
-const MP_SHEET_ALIASES={
-  Saldo_Awal:['02_SALDO_AWAL','Saldo_Awal'],
-  Transaksi_Juli:['03_TRANSAKSI_JULI','Transaksi_Juli'],
-  Borongan:['04_BORONGAN_JULI','Borongan'],
-  Histori_Bulanan:['05_REKAP_LAMA','Histori_Bulanan'],
-  Piutang:['06_PIUTANG','Piutang'],
-  Stok:['07_STOK_BAHAN','Stok'],
-  Gaji:['08_PAYROLL','Gaji'],
-  Proyek_Berjalan:['09_PROYEK_BERJALAN','Proyek_Berjalan'],
-  Checklist:['10_CHECKLIST','Checklist']
-};
-let mpStaging=null;
-const mpNum=v=>Number(String(v??0).replace(/[^0-9.-]/g,''))||0;
-const mpId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-function mpRead(){try{return JSON.parse(localStorage.getItem(MP_STORE)||'null')||{sheets:{},closedPeriods:{},meta:{}}}catch(e){return{sheets:{},closedPeriods:{},meta:{}}}}
-function mpWrite(v){localStorage.setItem(MP_STORE,JSON.stringify(v));localStorage.setItem('BM_PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());try{portalScheduleAutoBackup?.()}catch(e){}}
-function mpMoney(v){return 'Rp '+mpNum(v).toLocaleString('id-ID')}
-function mpCleanRows(rows){return (rows||[]).filter(r=>Object.entries(r||{}).some(([k,v])=>k!=='__EMPTY'&&v!==''&&v!==null&&v!==undefined)).map(r=>{const o={};Object.entries(r).forEach(([k,v])=>{if(k&&String(k).trim()&&!String(k).startsWith('__EMPTY'))o[String(k).trim()]=v});return o})}
-function mpNormalizeDate(v){if(!v)return '';if(v instanceof Date&&!isNaN(v))return v.toISOString().slice(0,10);if(typeof v==='number'&&window.XLSX){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`}const s=String(v).trim();const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s}
-function mpDisplayDate(v){const s=mpNormalizeDate(v),m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:s}
-function mpFindSheet(wb,aliases){return aliases.find(n=>wb.Sheets[n])||null}
-function mpImportExcel(ev){
- const f=ev.target.files?.[0];if(!f)return;
- if(!window.XLSX){mpStatus('Library Excel gagal dimuat. Pastikan internet aktif lalu refresh aplikasi.','bad');return}
- const reader=new FileReader();reader.onload=e=>{try{
-   const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});const sheets={},missing=[];
-   Object.entries(MP_SHEET_ALIASES).forEach(([canonical,aliases])=>{
-     const actual=mpFindSheet(wb,aliases);if(!actual){missing.push(aliases[0]);sheets[canonical]=[];return}
-     const ws=wb.Sheets[actual];let rows=XLSX.utils.sheet_to_json(ws,{range:2,defval:'',raw:true});
-     rows=mpCleanRows(rows).map(r=>{Object.keys(r).forEach(k=>{if(/tanggal|jatuh tempo/i.test(k))r[k]=mpNormalizeDate(r[k])});return r});
-     sheets[canonical]=rows;
-   });
-   mpStaging={sheets,meta:{fileName:f.name,importedAt:new Date().toISOString(),workbookSheets:wb.SheetNames},missing};
-   const total=Object.values(sheets).reduce((a,r)=>a+r.length,0);
-   mpStatus(`Excel terbaca: ${f.name} • ${total} baris ditemukan.${missing.length?' Sheet tidak ditemukan: '+missing.join(', '):''}`,missing.length?'bad':'ok');
-   mpPopulateSheetSelect(sheets);mpRenderPreview();mpRenderMetrics(mpStaging);
- }catch(err){console.error(err);mpStatus('Gagal membaca Excel: '+err.message,'bad')}};reader.readAsArrayBuffer(f)
-}
-function mpStatus(t,c=''){const el=document.getElementById('mpImportStatus');if(el){el.textContent=t;el.className='mpNotice '+c}}
-function mpPopulateSheetSelect(sheets){const el=document.getElementById('mpPreviewSheet');if(!el)return;el.innerHTML=Object.keys(sheets||{}).map(n=>`<option value="${n}">${n} (${(sheets[n]||[]).length})</option>`).join('')}
-function mpEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function mpRenderPreview(){const n=document.getElementById('mpPreviewSheet')?.value;const rows=(mpStaging?.sheets?.[n]||mpRead().sheets?.[n]||[]).slice(0,100);const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))];const h=document.getElementById('mpPreviewHead'),b=document.getElementById('mpPreviewBody');if(!h||!b)return;h.innerHTML=keys.length?`<tr>${keys.map(k=>`<th>${mpEsc(k)}</th>`).join('')}</tr>`:'';b.innerHTML=rows.length?rows.map(r=>`<tr>${keys.map(k=>`<td>${mpEsc(r[k])}</td>`).join('')}</tr>`).join(''):'<tr><td>Belum ada data.</td></tr>'}
-function mpValidateData(){if(!mpStaging)return mpStatus('Pilih file Excel terlebih dahulu.','bad');const s=mpStaging.sheets||{},errors=[];if(!(s.Transaksi_Juli||[]).length)errors.push('Transaksi Juli kosong');if(!(s.Saldo_Awal||[]).length)errors.push('Saldo awal kosong');if(errors.length){mpStatus('Validasi gagal: '+errors.join(' • '),'bad');return false}mpStatus(`Validasi berhasil: ${(s.Transaksi_Juli||[]).length} transaksi, ${(s.Borongan||[]).filter(r=>r.Nama).length} borongan, ${(s.Piutang||[]).filter(r=>r['Nama Customer']).length} piutang, ${(s.Stok||[]).filter(r=>r['Nama Bahan']).length} stok.`,'ok');return true}
-function mpGetKas(){try{return JSON.parse(localStorage.getItem('BM_KAS_BESAR_IMPORT_EXCEL_V1')||localStorage.getItem('BM_KAS_IMPORT_EXCEL_V1')||'null')||{fileName:'Kas Besar Terintegrasi',loadedAt:'',sheets:[],raw:{},summary:{},summaryCalc:{},transactions:{},materials:[],receivables:[],rekap:{},bagi:{},note:[]}}catch(e){return{fileName:'Kas Besar Terintegrasi',transactions:{},materials:[],receivables:[],summary:{},summaryCalc:{}}}}
-function mpSaveKas(db){db.loadedAt=new Date().toLocaleString('id-ID');const p=JSON.stringify(db);localStorage.setItem('BM_KAS_BESAR_IMPORT_EXCEL_V1',p);localStorage.setItem('BM_KAS_IMPORT_EXCEL_V1',p);localStorage.setItem('BM_KAS_LAST_SAVED_AT',new Date().toISOString())}
-function mpMonthKey(v){const s=mpNormalizeDate(v),m=Number(s.slice(5,7));return ['','januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'][m]||'juli'}
-function mpCommitImport(){
- if(!mpValidateData())return;
- try{
-  const s=mpStaging.sheets||{},kas=mpGetKas();kas.transactions=kas.transactions||{};
-  Object.keys(kas.transactions).forEach(m=>{['pemasukan','operasional'].forEach(k=>{kas.transactions[m][k]=(kas.transactions[m][k]||[]).filter(x=>x?.source!=='MIGRATION_EXCEL_2026_07')})});
-  let income=0,expense=0;
-  (s.Transaksi_Juli||[]).forEach(r=>{const amount=mpNum(r.Nilai);if(!amount||!r.Keterangan)return;const mk=mpMonthKey(r.Tanggal);kas.transactions[mk]=kas.transactions[mk]||{pemasukan:[],operasional:[],borongan:[],indra:[],andre:[]};const isIncome=/pemasukan|income|masuk/i.test(String(r.Jenis||''));const tx={date:mpDisplayDate(r.Tanggal),description:String(r.Keterangan),amount,account:r['Akun/Metode']||'Kas',source:'MIGRATION_EXCEL_2026_07',migrationSource:r.Sumber||'',importedAt:new Date().toISOString()};kas.transactions[mk][isIncome?'pemasukan':'operasional'].push(tx);if(isIncome)income+=amount;else expense+=amount});
-  kas.receivables=(s.Piutang||[]).filter(r=>r['Nama Customer']).map(r=>({id:mpId(),customer:r['Nama Customer'],invoice:r['No. Invoice/Proyek']||'',date:mpNormalizeDate(r.Tanggal),dueDate:mpNormalizeDate(r['Jatuh Tempo']),total:mpNum(r.Nilai),paid:mpNum(r['Sudah Dibayar']),amount:Math.max(0,mpNum(r.Nilai)-mpNum(r['Sudah Dibayar'])),status:r.Status||'Belum Lunas',note:r.Catatan||'',source:'MIGRATION_EXCEL'}));
-  kas.materials=(s.Stok||[]).filter(r=>r['Nama Bahan']).map(r=>({id:mpId(),name:r['Nama Bahan'],qty:mpNum(r.Qty),price:mpNum(r['Harga Satuan']),total:mpNum(r['Total Nilai'])||mpNum(r.Qty)*mpNum(r['Harga Satuan']),category:r.Kategori||'Bahan Produksi',note:r.Catatan||'',source:'MIGRATION_EXCEL'}));
-  kas.piutang=kas.receivables;kas.stock=kas.materials;
-  const saldo=(s.Saldo_Awal||[]).find(r=>/kas|bank/i.test(String(r['Jenis Saldo']||'')));const bank=mpNum(saldo?.Nilai);
-  const stockTotal=kas.materials.reduce((a,x)=>a+mpNum(x.total),0),receivableTotal=kas.receivables.reduce((a,x)=>a+mpNum(x.amount),0);
-  kas.summary={...(kas.summary||{}),pemasukanKeseluruhan:income,pengeluaranKeseluruhan:expense,kasDiRekening:bank,piutang:receivableTotal,stokBahan:stockTotal};
-  kas.summaryCalc={...(kas.summaryCalc||{}),totalIncome:income,totalExpense:expense,net:bank,bankRaw:bank,bankAvailable:bank,piutangTotal:receivableTotal,stockTotal};
-  mpSaveKas(kas);
-
-  const bor=(s.Borongan||[]).filter(r=>r.Nama&&mpNum(r.Total)>0).map(r=>({id:mpId(),nama:r.Nama,ket:r.Keterangan||'',jumlah:mpNum(r.Jumlah),harga:mpNum(r['Harga Satuan']),total:mpNum(r.Total),createdAt:mpNormalizeDate(r.Tanggal)||new Date().toISOString(),updatedAt:new Date().toISOString(),source:'MIGRATION_EXCEL'}));
-  localStorage.setItem('BERKAH_MULIA_ADV_BORONGAN_PRODUKSI_V2',JSON.stringify(bor));try{borSyncToKasOperasional?.()}catch(e){console.warn(e)}
-
-  const gaji=(s.Gaji||[]).filter(r=>r.Nama&&mpNum(r['Gaji Bersih'])>0);if(gaji.length){const period=gaji[0].Periode||'2026-07',employees=gaji.map((r,i)=>({id:'MIG-'+(i+1),name:r.Nama,dept:r.Jabatan||'',salary:mpNum(r['Gaji Pokok']),meal:0,otRate:0,redRate:0,incentive:mpNum(r['Lembur/Insentif']),kasbon:mpNum(r['Potongan/Kasbon']),loanInstallment:0}));const hr={period,employees,attendance:{},overtime:{},payroll:{},migrationPayroll:gaji};localStorage.setItem('BM_ABSENSI_GAJI_V4',JSON.stringify(hr))}
-
-  const projects=(s.Proyek_Berjalan||[]).filter(r=>r['Nama Proyek']).map(r=>({id:mpId(),name:r['Nama Proyek'],customer:r.Customer||'',po:r['No. SPK/PO']||'',value:mpNum(r['Nilai Kontrak']),dp:mpNum(r['DP Diterima']),receivable:mpNum(r['Sisa Tagihan']),hpp:mpNum(r['HPP Terpakai']),progress:mpNum(r['Progress %']),status:r['Status Proyek']||'Produksi',source:'MIGRATION_EXCEL'}));
-  let ent;try{ent=JSON.parse(localStorage.getItem('BM_ENTERPRISE_V2')||'null')}catch(e){};ent=ent&&typeof ent==='object'?ent:{projects:[],purchasing:[],inventory:[],tasks:[],audit:[]};ent.projects=(ent.projects||[]).filter(x=>x?.source!=='MIGRATION_EXCEL').concat(projects);ent.inventory=kas.materials;ent.audit=(ent.audit||[]).concat([{time:new Date().toISOString(),action:'Import Excel Migrasi Berkah Mulia',detail:`${(s.Transaksi_Juli||[]).length} transaksi`}]);localStorage.setItem('BM_ENTERPRISE_V2',JSON.stringify(ent));
-
-  const current=mpRead(),next={...current,sheets:s,meta:{...mpStaging.meta,committedAt:new Date().toISOString()},closedPeriods:current.closedPeriods||{}};mpWrite(next);
-  localStorage.setItem('BM_PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());
-  mpStatus(`BERHASIL: ${(s.Transaksi_Juli||[]).length} transaksi masuk Kas, ${bor.length} borongan, ${kas.receivables.length} piutang, ${kas.materials.length} stok, ${projects.length} proyek.`,'ok');
-  mpRenderMetrics(next);mpRenderObligations();try{window.MuliaUnifiedSync?.refresh();window.refreshDashboard?.()}catch(e){};try{document.getElementById('frameKas')?.contentWindow?.location?.reload()}catch(e){}
- }catch(err){console.error(err);mpStatus('Gagal menyimpan ke ERP: '+err.message,'bad')}
-}
-function mpSaveGlobalPeriod(){const v=document.getElementById('mpGlobalPeriod')?.value||'';localStorage.setItem(MP_GLOBAL,v);localStorage.setItem('BM_PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());document.getElementById('mpPeriodHint').textContent=`Periode default tersimpan: ${v}`}
-function mpRenderMetrics(data=mpRead()){const s=data.sheets||{};const saldo=(s.Saldo_Awal||[]).filter(r=>/kas|bank/i.test(String(r['Jenis Saldo']||''))).reduce((z,r)=>z+mpNum(r.Nilai),0);const piutang=(s.Piutang||[]).reduce((z,r)=>z+Math.max(0,mpNum(r.Nilai)-mpNum(r['Sudah Dibayar'])),0);const stok=(s.Stok||[]).reduce((z,r)=>z+(mpNum(r['Total Nilai'])||mpNum(r.Qty)*mpNum(r['Harga Satuan'])),0);const tx=(s.Transaksi_Juli||[]).length;const el=document.getElementById('mpMetrics');if(el)el.innerHTML=[["Saldo Kas/Bank",mpMoney(saldo)],["Piutang Berjalan",mpMoney(piutang)],["Nilai Stok",mpMoney(stok)],["Transaksi Terbaca",tx+' baris']].map(x=>`<div class="mpMetric"><small>${x[0]}</small><b>${x[1]}</b></div>`).join('')}
-function mpClosePeriod(){const p=document.getElementById('mpClosingPeriod')?.value,d=document.getElementById('mpPaymentDate')?.value;const ok=['mpC1','mpC2','mpC3','mpC4'].every(id=>document.getElementById(id)?.checked);const st=document.getElementById('mpClosingStatus');if(!p||!d||!ok){st.textContent='Lengkapi periode, tanggal pembayaran, dan seluruh checklist.';st.className='mpNotice bad';return}const db=mpRead();db.closedPeriods=db.closedPeriods||{};db.closedPeriods[p]={status:'MENUNGGU PEMBAYARAN',closedAt:new Date().toISOString(),paymentDate:d,locked:true};mpWrite(db);st.textContent=`Periode ${p} dikunci. Kewajiban dijadwalkan dibayar ${d}.`;st.className='mpNotice ok';mpRenderObligations()}
-function mpObligationRows(p){const s=mpRead().sheets||{};return ['Gaji','Borongan'].map(n=>{const rows=(s[n]||[]).filter(r=>String(r.Periode||p)===p);const amount=rows.reduce((z,r)=>z+mpNum(r['Gaji Bersih']??r.Total??0),0);const unpaid=rows.filter(r=>!/lunas|sudah diinput/i.test(String(r.Status||r['Status Bayar']||''))).length;return{name:n,amount,unpaid,total:rows.length}})}
-function mpRenderObligations(){const p=document.getElementById('mpClosingPeriod')?.value||'2026-07';const rows=mpObligationRows(p);const el=document.getElementById('mpObligationSummary');if(el)el.innerHTML=rows.map(r=>`<div class="mpObligation"><span>${r.name} • ${r.unpaid}/${r.total} belum selesai</span><b class="${r.unpaid?'':'ok'}">${mpMoney(r.amount)}</b></div>`).join('')||'<div class="mpNotice">Belum ada kewajiban.</div>'}
-function mpMarkPeriodPaid(){const p=document.getElementById('mpClosingPeriod')?.value,d=document.getElementById('mpPaymentDate')?.value;if(!p||!d)return alert('Pilih periode dan tanggal pembayaran.');const db=mpRead();['Gaji','Borongan'].forEach(n=>{(db.sheets?.[n]||[]).forEach(r=>{if(String(r.Periode||p)===p){r.Status='LUNAS';r['Status Bayar']='LUNAS';r['Tanggal Bayar']=d}})});if(db.closedPeriods?.[p])db.closedPeriods[p].status='CLOSED';mpWrite(db);document.getElementById('mpClosingStatus').textContent=`Periode ${p} telah lunas dan CLOSED pada ${d}.`;document.getElementById('mpClosingStatus').className='mpNotice ok';mpRenderObligations();mpRenderPreview()}
-function mpExportBackup(){const db=mpRead();const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup_migrasi_erp_berkah_mulia_'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-function mpInit(){const db=mpRead();mpStaging=db;const gp=localStorage.getItem(MP_GLOBAL)||'2026-07';const pe=document.getElementById('mpGlobalPeriod');if(pe)pe.value=gp;mpPopulateSheetSelect(db.sheets||{});mpRenderPreview();mpRenderMetrics(db);mpRenderObligations();const cp=Object.keys(db.closedPeriods||{}).sort().pop();const st=document.getElementById('mpClosingStatus');if(cp&&st){const x=db.closedPeriods[cp];st.textContent=`Periode terakhir: ${cp} • ${x.status} • bayar ${x.paymentDate||'-'}`;st.className='mpNotice '+(x.status==='CLOSED'?'ok':'')}}
-window.addEventListener('load',()=>{try{mpInit()}catch(e){console.error(e)}});
-</script>
-
-
-
-<script id="bm-nav-dedupe-v3">
-window.addEventListener('DOMContentLoaded',()=>{
- const seen=new Set();
- document.querySelectorAll('.portalTop button').forEach(b=>{
-   const key=(b.id||'')+'|'+(b.getAttribute('onclick')||'')+'|'+b.textContent.trim();
-   if(seen.has(key)) b.remove(); else seen.add(key);
- });
-});
-</script>
 </body>
 </html>
