@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BERKAH MULIA ERP - sinkronisasi terpadu dan non-destruktif. -->
+<!-- FIX: Dashboard Dwi membaca akumulasi keseluruhan data, bukan hanya bulan berjalan. -->
 <html lang="id">
 <head>
 <meta charset="UTF-8">
@@ -158,9 +158,9 @@ body{background:var(--bm-bg)}
   </div>
 </div>
 <div class="portalTop">
-  <div class="brand">BERKAH MULIA <span class="portalVersion">ERP V2.1 SYNC STABLE</span><small>Penawaran & Invoice • Absensi & Gaji • Borongan • Kas Besar</small></div>
+  <div class="brand">BERKAH MULIA <span class="portalVersion">ERP V2.2 BERKAH STABLE</span><small>Penawaran & Invoice • Absensi & Gaji • Borongan • Kas Besar</small></div>
   <button id="btnDashboard" class="tabBtn active" onclick="openApp('dashboard')">📊 Dashboard</button>
-  <button id="btnPenawaran" class="tabBtn" onclick="openApp('penawaran')">📄 Penawaran</button>
+  <button id="btnPenawaran" class="tabBtn" onclick="openApp('penawaran')">📄 Penawaran & Invoice</button>
   <button id="btnAbsensi" class="tabBtn" onclick="openApp('absensi')">👷 Absensi & Penggajian</button>
   <button id="btnKas" class="tabBtn" onclick="openApp('kas')">💰 Kas Besar</button>
   <button id="btnBorongan" class="tabBtn" onclick="openApp('borongan')">🛠️ Borongan</button>
@@ -1263,79 +1263,6 @@ window.addEventListener('message',function(ev){
     setTimeout(()=>{try{if(typeof repaint==='function')repaint()}catch(e){}},100);
   }
 });
-
-
-<script id="berkah-sync-stable-v21">
-(function(){
-  'use strict';
-  const WATCH_KEYS=[
-    'BM_SALES_DB_V1','BM_KAS_BESAR_IMPORT_EXCEL_V1','BM_KAS_IMPORT_EXCEL_V1',
-    'BM_ABSENSI_GAJI_V4','BM_ABSENSI_GAJI_V3','BERKAH_MULIA_BORONGAN_V1',
-    'BM_BAGI_HASIL_SIMPLE_V1','BM_ENTERPRISE_V1'
-  ];
-  let lastFingerprint='';
-  let refreshTimer=null;
-  function fingerprint(){
-    return WATCH_KEYS.map(k=>localStorage.getItem(k)||'').join('\u241e');
-  }
-  function refreshAll(reason){
-    clearTimeout(refreshTimer);
-    refreshTimer=setTimeout(function(){
-      try{ window.MuliaIntegrationV3?.run?.(); }catch(e){ console.warn('Integration refresh:',e); }
-      try{ window.MuliaUnifiedSync?.refresh?.(); }catch(e){ console.warn('Unified refresh:',e); }
-      try{ window.portalSyncPayrollFromStorage?.(true); }catch(e){ console.warn('Payroll sync:',e); }
-      try{ window.borSyncToKasOperasional?.(); }catch(e){ console.warn('Borongan sync:',e); }
-      try{ window.renderEnterprise?.(); }catch(e){ console.warn('Dashboard render:',e); }
-      try{ window.refreshDashboard?.(); }catch(e){}
-      try{ window.bhRenderSimple?.(); }catch(e){}
-      try{ window.refreshDwiDashboard?.(); }catch(e){}
-      try{
-        localStorage.setItem('BM_PORTAL_SYNC_LOCAL_UPDATED_AT',new Date().toISOString());
-        localStorage.setItem('BM_LAST_SYNC_REASON',reason||'refresh');
-      }catch(e){}
-    },120);
-  }
-  function check(reason){
-    const now=fingerprint();
-    if(now!==lastFingerprint){
-      lastFingerprint=now;
-      refreshAll(reason||'data-change');
-      try{ window.portalScheduleAutoBackup?.(); }catch(e){}
-    }
-  }
-  const previousOpen=window.openApp;
-  if(typeof previousOpen==='function'){
-    window.openApp=function(app){
-      const result=previousOpen.apply(this,arguments);
-      setTimeout(()=>refreshAll('open-'+app),180);
-      return result;
-    };
-  }
-  window.addEventListener('storage',e=>{
-    if(!e.key || WATCH_KEYS.includes(e.key)) check('storage');
-  });
-  window.addEventListener('message',e=>{
-    const t=e?.data?.type||'';
-    if(!t || /UPDATED|SAVED|SYNC|PAYROLL|KAS|SALES|BORONGAN|INVOICE|QUOTE/i.test(t)) check('iframe-message');
-  });
-  window.addEventListener('focus',()=>check('focus'));
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) check('visible'); });
-  ['framePenawaran','frameKas','frameAbsensi'].forEach(id=>{
-    document.getElementById(id)?.addEventListener('load',()=>setTimeout(()=>refreshAll('iframe-load'),250));
-  });
-  document.addEventListener('DOMContentLoaded',function(){
-    lastFingerprint=fingerprint();
-    refreshAll('startup');
-    setInterval(()=>check('watchdog'),2000);
-  });
-  if(document.readyState!=='loading'){
-    lastFingerprint=fingerprint();
-    refreshAll('startup-ready');
-    setInterval(()=>check('watchdog'),2000);
-  }
-  window.BerkahSyncStable={refresh:()=>refreshAll('manual'),check,keys:WATCH_KEYS,version:'2.1'};
-})();
-</script>
 
 </body></html>`;
 }
