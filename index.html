@@ -26,6 +26,25 @@
 .metric .value{word-break:break-word}.dataTable tbody tr:hover{background:#f8fafc}.emptyState{padding:28px!important;text-align:center!important;color:#64748b}
 @media(max-width:650px){#portalLoader{inset:0}.metric .value{font-size:24px}}
 
+
+/* ===== MULIA PRINT CENTER V1 ===== */
+.printCenterBtn{background:#7c3aed!important;border-color:#a78bfa!important;white-space:nowrap}
+#printCenterModal{position:fixed;inset:0;z-index:1000010;background:rgba(2,6,23,.68);display:none;align-items:center;justify-content:center;padding:20px}
+#printCenterModal.open{display:flex}
+.printCenterBox{width:min(560px,100%);background:#fff;color:#0f172a;border-radius:22px;box-shadow:0 30px 90px rgba(0,0,0,.4);overflow:hidden}
+.printCenterHead{padding:20px 22px;background:linear-gradient(135deg,#0f172a,#312e81);color:#fff;display:flex;justify-content:space-between;gap:15px;align-items:flex-start}
+.printCenterHead h2{margin:0;font-size:22px}.printCenterHead p{margin:5px 0 0;color:#cbd5e1;font-size:12px}.printCenterClose{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:20px}
+.printCenterBody{padding:22px}.printCenterInfo{background:#f8fafc;border:1px solid #e2e8f0;border-radius:15px;padding:14px;margin-bottom:16px}.printCenterInfo small{display:block;color:#64748b;font-weight:800;text-transform:uppercase;font-size:10px}.printCenterInfo b{display:block;margin-top:5px;font-size:17px}
+.printCenterActions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.printCenterAction{border:0;border-radius:14px;padding:15px 12px;font-weight:900;cursor:pointer;font-size:14px}.printCenterAction.primary{background:#2563eb;color:white}.printCenterAction.pdf{background:#dc2626;color:white}.printCenterAction.secondary{background:#e2e8f0;color:#0f172a;grid-column:1/-1}.printCenterHint{font-size:11px;color:#64748b;line-height:1.55;margin-top:14px}
+@media(max-width:700px){.printCenterActions{grid-template-columns:1fr}.printCenterAction.secondary{grid-column:auto}.printCenterBtn{flex:1}}
+@media print{
+  #printCenterModal,.portalTop,#portalLogin,#portalLoader{display:none!important}
+  body{background:#fff!important}
+  .frameWrap{position:static!important;top:0!important;overflow:visible!important;height:auto!important}
+  .commandPage{display:none!important;max-width:none!important;padding:8mm!important;box-shadow:none!important}
+  .commandPage.active{display:block!important}
+  iframe.appFrame{display:none!important}
+}
 </style>
 
 <style id="migration-css">#migModal{position:fixed;inset:0;background:rgba(2,6,23,.78);z-index:2000000;display:none;align-items:center;justify-content:center;padding:18px}#migModal.show{display:flex}#migBox{background:#fff;width:min(1250px,100%);max-height:94vh;overflow:auto;border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.4)}#migHead{position:sticky;top:0;background:#0f172a;color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;z-index:2}#migBody{padding:16px}.migTools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.migBtn{border:0;border-radius:10px;padding:10px 13px;font-weight:800;cursor:pointer}.migBlue{background:#2563eb;color:#fff}.migGreen{background:#059669;color:#fff}.migOrange{background:#d97706;color:#fff}.migGray{background:#e2e8f0}.migTable{width:100%;border-collapse:collapse;font-size:12px}.migTable th,.migTable td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}.migTable th{background:#f8fafc;position:sticky;top:58px}.migTable select{padding:6px;border:1px solid #cbd5e1;border-radius:8px}.migSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}.migSummary div{padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}.migSummary b{display:block;font-size:20px}@media(max-width:700px){.migSummary{grid-template-columns:1fr}.migTable{font-size:10px}}</style>
@@ -1374,6 +1393,154 @@ setTimeout(run,500);
    if(dot){dot.classList.remove('on','syncing','error');const t=String(txt||'').toLowerCase();if(state===true&&!/menyiapkan|mengecek|proses|mengunggah/.test(t))dot.classList.add('on');else if(/gagal|error|habis|belum login/.test(t))dot.classList.add('error');else dot.classList.add('syncing');}
  };
  window.DWI_PORTAL_VERSION='2.0.2-STABLE';
+})();
+</script>
+
+
+<div id="printCenterModal" aria-hidden="true">
+  <div class="printCenterBox" role="dialog" aria-modal="true" aria-labelledby="printCenterTitle">
+    <div class="printCenterHead">
+      <div><h2 id="printCenterTitle">🖨 Print Center</h2><p id="printCenterCompany"></p></div>
+      <button class="printCenterClose" onclick="closePrintCenter()" title="Tutup">×</button>
+    </div>
+    <div class="printCenterBody">
+      <div class="printCenterInfo"><small>Modul yang akan dicetak</small><b id="printCenterModule">-</b></div>
+      <div class="printCenterActions">
+        <button class="printCenterAction primary" onclick="printCenterExecute('print')">🖨 Print Sekarang</button>
+        <button class="printCenterAction pdf" onclick="printCenterExecute('pdf')">📄 Simpan sebagai PDF</button>
+        <button class="printCenterAction secondary" onclick="closePrintCenter()">Batal</button>
+      </div>
+      <div class="printCenterHint">Untuk menyimpan PDF, pada jendela cetak pilih printer <b>Save as PDF / Simpan sebagai PDF</b>, lalu tentukan nama dan lokasi file. Data dan identitas perusahaan mengikuti aplikasi yang sedang dibuka.</div>
+    </div>
+  </div>
+</div>
+
+<script id="muliaPrintCenterScript">
+(function(){
+  const PRINT_COMPANY = 'BERKAH MULIA ADV';
+  const MODULE_LABELS={dashboard:'Dashboard Utama',penawaran:'Penawaran & Invoice',kas:'Kas Besar',absensi:'Absensi & Slip Gaji',bagihasil:'Bagi Hasil',enterprise:'Enterprise',inventory:'Inventory',hpp:'HPP & RAB',po:'Purchase Order',suratjalan:'Surat Jalan'};
+  function activeModule(){
+    const activeBtn=document.querySelector('.tabBtn.active');
+    if(activeBtn){
+      const txt=(activeBtn.textContent||'').replace(/[📊📄💰👷🤝🏢📦🧾🚚]/g,'').trim();
+      if(txt) return txt;
+    }
+    const active=document.querySelector('.commandPage.active,.appFrame.active');
+    return active ? (active.getAttribute('title')||active.id||'Halaman Aktif') : 'Halaman Aktif';
+  }
+  window.openPrintCenter=function(){
+    const m=document.getElementById('printCenterModal');
+    document.getElementById('printCenterCompany').textContent=PRINT_COMPANY;
+    document.getElementById('printCenterModule').textContent=activeModule();
+    m.classList.add('open');m.setAttribute('aria-hidden','false');
+  };
+  window.closePrintCenter=function(){const m=document.getElementById('printCenterModal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}};
+  function getActiveTarget(){
+    const f=document.querySelector('iframe.appFrame.active');
+    if(f) return {type:'frame',el:f};
+    const p=document.querySelector('.commandPage.active');
+    return {type:'page',el:p};
+  }
+  window.printCenterExecute=function(mode){
+    closePrintCenter();
+    const t=getActiveTarget();
+    setTimeout(function(){
+      try{
+        if(t.type==='frame' && t.el && t.el.contentWindow){
+          t.el.contentWindow.focus();
+          t.el.contentWindow.print();
+        }else{
+          window.focus();window.print();
+        }
+      }catch(err){alert('Halaman belum siap dicetak. Buka kembali tab lalu coba lagi.');console.error(err)}
+    },180);
+  };
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closePrintCenter();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrintCenter()}});
+  document.addEventListener('click',function(e){if(e.target && e.target.id==='printCenterModal')closePrintCenter()});
+  function installTabPrintButtons(){
+    const oldTop=document.getElementById('btnPrintCenter');
+    if(oldTop)oldTop.remove();
+    document.querySelectorAll('.tabBtn').forEach(function(tab){
+      if(tab.querySelector('.tabPrintBtn'))return;
+      const match=String(tab.getAttribute('onclick')||'').match(/openApp\(['"]([^'"]+)['"]\)/);
+      const moduleKey=match?match[1]:null;
+      const p=document.createElement('span');
+      p.className='tabPrintBtn';
+      p.innerHTML='🖨';
+      p.title='Print / Simpan PDF tab ini';
+      p.setAttribute('role','button');
+      p.setAttribute('aria-label','Print tab '+(tab.textContent||''));
+      p.addEventListener('click',function(e){
+        e.preventDefault();e.stopPropagation();
+        if(moduleKey && typeof window.openApp==='function')window.openApp(moduleKey);
+        setTimeout(window.openPrintCenter,180);
+      });
+      tab.appendChild(p);
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installTabPrintButtons);else installTabPrintButtons();
+  new MutationObserver(installTabPrintButtons).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
+<style id="muliaPrintCompleteStyle">
+.inlineModulePrint{border:0;border-radius:11px;background:#7c3aed;color:#fff;padding:10px 14px;font-weight:900;cursor:pointer;box-shadow:0 5px 15px rgba(124,58,237,.22);white-space:nowrap}
+.inlineModulePrint:hover{filter:brightness(1.08)}
+@media print{.inlineModulePrint,.tabPrintBtn,.bhActions,button,input,select{print-color-adjust:exact}}
+</style>
+<script id="muliaPrintCompletePatch">
+(function(){
+ const COMPANY='BERKAH MULIA ADV';
+ function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+ function printDoc(title, node, landscape){
+   if(!node){alert('Data belum siap dicetak.');return}
+   const clone=node.cloneNode(true);
+   clone.querySelectorAll('button,.inlineModulePrint,.tabPrintBtn,.no-print,input[type=file]').forEach(x=>x.remove());
+   clone.querySelectorAll('input,textarea,select').forEach(el=>{
+     const span=document.createElement('span');
+     span.textContent=el.tagName==='SELECT'?(el.options[el.selectedIndex]?.text||''):el.value;
+     span.style.cssText='display:inline-block;min-width:40px;padding:2px 4px;border-bottom:1px solid #cbd5e1';
+     el.replaceWith(span);
+   });
+   const w=window.open('','_blank','width=1100,height=800');
+   if(!w){alert('Popup diblokir browser. Izinkan popup lalu coba lagi.');return}
+   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+   @page{size:${landscape?'A4 landscape':'A4 portrait'};margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:12px}.ph{text-align:center;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:14px}.ph h1{font-size:18px;margin:0 0 4px}.ph h2{font-size:14px;margin:0}.ph p{font-size:10px;color:#64748b;margin:5px 0 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}th{background:#f1f5f9}.hero,.card,.enterpriseCard,.bhCard{box-shadow:none!important;border:1px solid #dbe3ee!important;margin-bottom:12px!important;padding:12px!important;background:#fff!important}.enterpriseGrid,.bhGrid,.grid4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.enterpriseTwo{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}button{display:none!important}.portalTop,.sidebar,.tabs,.nav,.toolbar{display:none!important}body>*{max-width:100%!important}.money{text-align:right}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body><div class="ph"><h1>${esc(COMPANY)}</h1><h2>${esc(title)}</h2><p>Dicetak: ${new Date().toLocaleString('id-ID')}</p></div>${clone.outerHTML}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script></body></html>`);
+   w.document.close();
+ }
+ window.muliaPrintDashboard=function(){printDoc('LAPORAN DASHBOARD',document.getElementById('pageDashboard'),true)};
+ window.muliaPrintBagiHasil=function(){printDoc('LAPORAN BAGI HASIL',document.getElementById('pageBagiHasil'),true)};
+ function addOuterButtons(){
+   const dash=document.querySelector('#pageDashboard .hero');
+   if(dash&&!dash.querySelector('.inlineModulePrint')){const b=document.createElement('button');b.className='inlineModulePrint';b.textContent='🖨 Print Dashboard';b.onclick=muliaPrintDashboard;(dash.querySelector('.heroRight')||dash).appendChild(b)}
+   const bh=document.querySelector('#pageBagiHasil .hero');
+   if(bh&&!bh.querySelector('.inlineModulePrint')){const b=document.createElement('button');b.className='inlineModulePrint';b.textContent='🖨 Print Bagi Hasil';b.onclick=muliaPrintBagiHasil;(bh.querySelector('.heroRight')||bh).appendChild(b)}
+ }
+ function installAbsensiPrint(){
+   const fr=document.getElementById('frameAbsensi');if(!fr||!fr.contentDocument)return;
+   const d=fr.contentDocument,w=fr.contentWindow;
+   if(d.getElementById('muliaAbsensiPrintPatch'))return;
+   const st=d.createElement('style');st.id='muliaAbsensiPrintPatch';st.textContent='.absPrintBtn{margin-left:6px;border:0;border-radius:8px;background:#7c3aed;color:white;padding:6px 9px;font-weight:800;cursor:pointer}.absPanelPrint{float:right;border:0;border-radius:10px;background:#7c3aed;color:white;padding:9px 12px;font-weight:900;cursor:pointer;margin:4px 0 10px}';d.head.appendChild(st);
+   function label(panel){const map={master:'DATA KARYAWAN',absen:'REKAP ABSENSI',lembur:'REKAP LEMBUR',rekap:'REKAP PENGGAJIAN',slip:'SLIP GAJI'};return map[panel]||String(panel||'ABSENSI & PENGGAJIAN').toUpperCase()}
+   function doPrint(panel){
+     const p=d.getElementById('panel-'+panel)||d.querySelector('.panel.active');
+     if(!p)return alert('Bagian belum siap dicetak.');
+     if(panel==='slip'&&typeof w.renderSlip==='function')w.renderSlip();
+     printDoc(label(panel),p,panel!=='slip');
+   }
+   d.querySelectorAll('.tab').forEach(t=>{
+     if(t.querySelector('.absPrintBtn'))return;
+     const b=d.createElement('span');b.className='absPrintBtn';b.textContent='🖨';b.title='Print '+t.textContent.trim();
+     b.onclick=e=>{e.preventDefault();e.stopPropagation();t.click();setTimeout(()=>doPrint(t.dataset.panel),100)};t.appendChild(b)
+   });
+   d.querySelectorAll('.panel').forEach(p=>{
+     if(p.querySelector(':scope > .absPanelPrint'))return;
+     const key=(p.id||'').replace('panel-','');const b=d.createElement('button');b.className='absPanelPrint';b.textContent='🖨 Print '+label(key);b.onclick=()=>doPrint(key);p.insertBefore(b,p.firstChild)
+   });
+ }
+ addOuterButtons();
+ const fr=document.getElementById('frameAbsensi');if(fr)fr.addEventListener('load',()=>setTimeout(installAbsensiPrint,300));
+ setInterval(()=>{addOuterButtons();installAbsensiPrint()},1200);
 })();
 </script>
 
