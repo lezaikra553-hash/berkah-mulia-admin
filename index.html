@@ -1518,24 +1518,37 @@ setTimeout(run,500);
  }
  function installAbsensiPrint(){
    const fr=document.getElementById('frameAbsensi');if(!fr||!fr.contentDocument)return;
-   const d=fr.contentDocument,w=fr.contentWindow;
-   if(d.getElementById('muliaAbsensiPrintPatch'))return;
-   const st=d.createElement('style');st.id='muliaAbsensiPrintPatch';st.textContent='.absPrintBtn{margin-left:6px;border:0;border-radius:8px;background:#7c3aed;color:white;padding:6px 9px;font-weight:800;cursor:pointer}.absPanelPrint{float:right;border:0;border-radius:10px;background:#7c3aed;color:white;padding:9px 12px;font-weight:900;cursor:pointer;margin:4px 0 10px}';d.head.appendChild(st);
-   function label(panel){const map={master:'DATA KARYAWAN',absen:'REKAP ABSENSI',lembur:'REKAP LEMBUR',rekap:'REKAP PENGGAJIAN',slip:'SLIP GAJI'};return map[panel]||String(panel||'ABSENSI & PENGGAJIAN').toUpperCase()}
-   function doPrint(panel){
-     const p=d.getElementById('panel-'+panel)||d.querySelector('.panel.active');
-     if(!p)return alert('Bagian belum siap dicetak.');
-     if(panel==='slip'&&typeof w.renderSlip==='function')w.renderSlip();
-     printDoc(label(panel),p,panel!=='slip');
+   const d=fr.contentDocument;
+   let st=d.getElementById('muliaAbsensiPrintPatch');
+   if(!st){
+     st=d.createElement('style');st.id='muliaAbsensiPrintPatch';
+     st.textContent='.absHeadingPrint{margin-left:10px;border:0;border-radius:8px;background:#7c3aed;color:white;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;vertical-align:middle;white-space:nowrap}.absHeadingPrint:hover{filter:brightness(1.08)}@media print{.absHeadingPrint{display:none!important}}';
+     d.head.appendChild(st);
    }
-   d.querySelectorAll('.tab').forEach(t=>{
-     if(t.querySelector('.absPrintBtn'))return;
-     const b=d.createElement('span');b.className='absPrintBtn';b.textContent='🖨';b.title='Print '+t.textContent.trim();
-     b.onclick=e=>{e.preventDefault();e.stopPropagation();t.click();setTimeout(()=>doPrint(t.dataset.panel),100)};t.appendChild(b)
-   });
-   d.querySelectorAll('.panel').forEach(p=>{
-     if(p.querySelector(':scope > .absPanelPrint'))return;
-     const key=(p.id||'').replace('panel-','');const b=d.createElement('button');b.className='absPanelPrint';b.textContent='🖨 Print '+label(key);b.onclick=()=>doPrint(key);p.insertBefore(b,p.firstChild)
+   /* Bersihkan tombol tambahan versi lama. Tombol slip gaji bawaan aplikasi tidak disentuh. */
+   d.querySelectorAll('.absPrintBtn,.absPanelPrint').forEach(x=>x.remove());
+   const targets=[
+     {text:'Master Karyawan',title:'DATA KARYAWAN'},
+     {text:'Absensi Kalender',title:'REKAP ABSENSI'},
+     {text:'Lembur Harian',title:'REKAP LEMBUR'},
+     {text:'Rekap Gaji Otomatis',title:'REKAP PENGGAJIAN'}
+   ];
+   function headingFor(text){
+     const nodes=[...d.querySelectorAll('h1,h2,h3,h4,h5,h6,.title,.section-title,.card-title,.panel-title,strong,b,div,span')];
+     const exact=nodes.find(el=>el.children.length===0 && el.textContent.trim()===text);
+     if(exact)return exact;
+     return nodes.find(el=>el.children.length===0 && el.textContent.trim().startsWith(text));
+   }
+   function printableArea(el){
+     return el.closest('.panel,.tab-panel,.content-panel,.card,section,main') || el.parentElement;
+   }
+   targets.forEach(item=>{
+     const h=headingFor(item.text);if(!h)return;
+     const host=h.parentElement||h;
+     if(host.querySelector(':scope > .absHeadingPrint[data-for="'+item.text+'"]'))return;
+     const b=d.createElement('button');b.type='button';b.className='absHeadingPrint';b.dataset.for=item.text;b.textContent='🖨 Print';b.title='Print '+item.text;
+     b.onclick=e=>{e.preventDefault();e.stopPropagation();const area=printableArea(h);if(!area)return alert('Bagian '+item.text+' belum siap dicetak.');printDoc(item.title,area,true)};
+     h.insertAdjacentElement('afterend',b);
    });
  }
  addOuterButtons();
