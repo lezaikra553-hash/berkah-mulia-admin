@@ -240,7 +240,10 @@
         <div class="borField"><label>Keahlian</label><input id="borMasterSkill" placeholder="Etching, fabrikasi, dll."></div>
         <div class="borField"><label>Tarif Standar</label><input id="borMasterRate" type="number" min="0" value="0"></div>
         <div class="borField"><label>Status</label><select id="borMasterStatus"><option>AKTIF</option><option>NONAKTIF</option></select></div>
-        <button class="borBtn borBlue" onclick="borSaveWorker()">Simpan Pekerja</button>
+        <div class="borActions">
+      <button class="borBtn borGray" onclick="borNewWorker()">+ Tambah Baru</button>
+      <button class="borBtn borBlue" onclick="borSaveWorker()">Simpan Pekerja</button>
+    </div>
       </div>
     </div>
     <div class="borCard"><div style="overflow:auto"><table class="borTable"><thead><tr><th>No</th><th>Nama</th><th>No. HP</th><th>Keahlian</th><th>Tarif</th><th>Status</th><th class="noPrint">Aksi</th></tr></thead><tbody id="borWorkerRows"></tbody></table></div></div>
@@ -1738,13 +1741,25 @@ function ensureWorker(name){
  if(!w){w={id:uid('W'),name,phone:'',skill:'',rate:0,status:'AKTIF'};S.workers.push(w)}
  return w;
 }
+function migrationWorker(period,name){
+ if(String(period)==='2026-07')return ensureWorker('Indra');
+ return ensureWorker(name||'Pekerja Lama');
+}
 function migrate(){
- if(S.migrated && S.entries.length)return;
+ if(S.migrated && S.entries.length){
+   if(!S.julyIndraCorrected){
+     const indra=ensureWorker('Indra');
+     S.entries.forEach(e=>{if(String(e.date||'').slice(0,7)==='2026-07')e.workerId=indra.id;});
+     S.payments.forEach(p=>{if(p.period==='2026-07')p.workerId=indra.id;});
+     S.julyIndraCorrected=true;save();
+   }
+   return;
+ }
  try{
    const old=JSON.parse(localStorage.getItem(OLD_KEY)||'null');
    if(old?.periods){
      Object.entries(old.periods).forEach(([period,p])=>(p.items||[]).forEach(x=>{
-       const w=ensureWorker(x.worker||'Pekerja Lama');
+       const w=migrationWorker(period,x.worker||'Pekerja Lama');
        const date=(x.paymentDate&&x.paymentDate.slice(0,7)===period)?x.paymentDate:period+'-01';
        if(!S.entries.some(e=>e.legacyId===x.id))S.entries.push({id:uid('E'),legacyId:x.id,date,workerId:w.id,description:x.description||'Borongan lama',qty:num(x.qty)||1,unit:x.unit||'',rate:num(x.rate)||num(x.amount),amount:num(x.amount)||num(x.qty)*num(x.rate)});
      }));
@@ -1763,7 +1778,7 @@ function migrate(){
      const wm=rawDesc.match(/^Borongan\s+([^—–-]+?)\s*[—–-]\s*(.*)$/i);
      const parsedWorker=wm?wm[1].trim():'';
      const parsedDesc=wm?wm[2].trim():rawDesc.replace(/^Borongan\s*/i,'').trim();
-     const w=ensureWorker(x.worker||x.employeeName||parsedWorker||'Pekerja Lama');
+     const w=migrationWorker(period,x.worker||x.employeeName||parsedWorker||'Pekerja Lama');
      const legacy='CASH-'+m+'-'+String(x.id||rawDesc||'')+'-'+num(x.amount);
      if(S.entries.some(e=>e.legacyId===legacy))return;
      let date=String(x.date||period+'-01').replace(/^(\d{2})\/(\d{2})\/(\d{4})$/,'$3-$2-$1');
@@ -1771,7 +1786,10 @@ function migrate(){
      S.entries.push({id:uid('E'),legacyId:legacy,date,workerId:w.id,description:parsedDesc||'Borongan lama',qty:num(x.qty)||1,unit:x.unit||'',rate:num(x.price||x.rate)||num(x.amount),amount:num(x.amount)});
    });
  });
- S.migrated=true;save();
+ const indra=ensureWorker('Indra');
+ S.entries.forEach(e=>{if(String(e.date||'').slice(0,7)==='2026-07')e.workerId=indra.id;});
+ S.payments.forEach(p=>{if(p.period==='2026-07')p.workerId=indra.id;});
+ S.migrated=true;S.julyIndraCorrected=true;save();
 }
 function recap(period){
  const map={};
@@ -1818,6 +1836,13 @@ window.borOpenPane=function(name,btn){
  document.querySelectorAll('.borTab').forEach(x=>x.classList.remove('active'));btn?.classList.add('active');
  if(name==='payment')borPaymentPreview();if(name==='slip'){borFillSlipWorkers();borRenderSlip()}
 };
+window.borNewWorker=function(){
+ editWorkerId=null;
+ ['borMasterName','borMasterPhone','borMasterSkill'].forEach(id=>{if(el(id))el(id).value=''});
+ if(el('borMasterRate'))el('borMasterRate').value=0;
+ if(el('borMasterStatus'))el('borMasterStatus').value='AKTIF';
+ el('borMasterName')?.focus();
+};
 window.borSaveWorker=function(){
  load();const name=el('borMasterName').value.trim();if(!name){alert('Nama pekerja wajib diisi.');return}
  const d={id:editWorkerId||uid('W'),name,phone:el('borMasterPhone').value.trim(),skill:el('borMasterSkill').value.trim(),rate:num(el('borMasterRate').value),status:el('borMasterStatus').value};
@@ -1830,7 +1855,17 @@ window.borEditWorker=function(id){
  el('borMasterName').value=x.name;el('borMasterPhone').value=x.phone||'';el('borMasterSkill').value=x.skill||'';el('borMasterRate').value=x.rate||0;el('borMasterStatus').value=x.status||'AKTIF';
 };
 window.borDeleteWorker=function(id){
- if(!confirm('Nonaktifkan pekerja ini?'))return;load();const x=S.workers.find(w=>w.id===id);if(x)x.status='NONAKTIF';save();borRender();
+ load();
+ const x=S.workers.find(w=>w.id===id);if(!x)return;
+ const jobs=S.entries.filter(e=>e.workerId===id).length;
+ const pays=S.payments.filter(p=>p.workerId===id).length;
+ if(jobs||pays){
+   alert('Pekerja '+x.name+' tidak bisa dihapus karena masih memiliki histori borongan atau pembayaran. Ubah status menjadi NONAKTIF agar histori tetap aman.');
+   return;
+ }
+ if(!confirm('Hapus permanen pekerja '+x.name+'?'))return;
+ S.workers=S.workers.filter(w=>w.id!==id);
+ save();borNewWorker();borRender();
 };
 window.borAddEntry=function(){
  load();const date=el('borWorkDate').value,workerId=el('borWorkerSelect').value,description=el('borWorkDesc').value.trim(),qty=num(el('borWorkQty').value)||1,unit=el('borWorkUnit').value.trim(),rate=num(el('borWorkRate').value);
@@ -1890,7 +1925,7 @@ window.borRender=function(){
  el('borMetrics').innerHTML=[
    ['Periode Aktif',periodLabel(p)],['Pekerja Aktif',S.workers.filter(x=>x.status==='AKTIF').length],['Total Borongan',money(total)],['Sudah Dibayar',money(paid)]
  ].map(x=>'<div class="borCard borMetric"><small>'+esc(x[0])+'</small><b>'+esc(x[1])+'</b></div>').join('');
- el('borWorkerRows').innerHTML=S.workers.length?S.workers.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.phone||'-')+'</td><td>'+esc(x.skill||'-')+'</td><td>'+money(x.rate)+'</td><td>'+esc(x.status)+'</td><td class="noPrint"><button class="borBtn borGray" onclick="borEditWorker(\''+x.id+'\')">Edit</button> <button class="borBtn borRed" onclick="borDeleteWorker(\''+x.id+'\')">Nonaktifkan</button></td></tr>').join(''):'<tr><td colspan="7">Belum ada pekerja.</td></tr>';
+ el('borWorkerRows').innerHTML=S.workers.length?S.workers.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.phone||'-')+'</td><td>'+esc(x.skill||'-')+'</td><td>'+money(x.rate)+'</td><td>'+esc(x.status)+'</td><td class="noPrint"><button class="borBtn borGray" onclick="borEditWorker(\''+x.id+'\')">Edit</button> <button class="borBtn borRed" onclick="borDeleteWorker(\''+x.id+'\')">Hapus</button></td></tr>').join(''):'<tr><td colspan="7">Belum ada pekerja.</td></tr>';
  el('borDailyRows').innerHTML=daily.length?daily.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.date)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+esc(x.description)+'</td><td>'+x.qty+'</td><td>'+esc(x.unit||'-')+'</td><td>'+money(x.rate)+'</td><td>'+money(entryTotal(x))+'</td><td class="noPrint"><button class="borBtn borGray" onclick="borEditEntry(\''+x.id+'\')">Edit</button> <button class="borBtn borRed" onclick="borDeleteEntry(\''+x.id+'\')">Hapus</button></td></tr>').join(''):'<tr><td colspan="9">Belum ada pekerjaan pada periode ini.</td></tr>';
  el('borRecapRows').innerHTML=r.length?r.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(workerName(x.workerId))+'</b></td><td>'+x.count+'</td><td>'+x.qty+'</td><td>'+money(x.total)+'</td><td><span class="borStatus '+(paymentFor(p,x.workerId)?'paid':'')+'">'+(paymentFor(p,x.workerId)?'DIBAYAR':'BELUM DIBAYAR')+'</span></td></tr>').join(''):'<tr><td colspan="6">Belum ada rekap.</td></tr>';
  el('borPaymentRows').innerHTML=S.payments.length?S.payments.slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate))).map(x=>'<tr><td>'+esc(periodLabel(x.period))+'</td><td>'+esc(x.paymentDate)+'</td><td>'+esc(x.method)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+money(x.amount)+'</td><td><span class="borStatus '+(x.status==='DIBAYAR'?'paid':'')+'">'+esc(x.status)+'</span></td><td class="noPrint">'+(x.status==='DIBAYAR'?'<button class="borBtn borRed" onclick="borCancelPayment(\''+x.id+'\')">Batalkan</button>':'-')+'</td></tr>').join(''):'<tr><td colspan="7">Belum ada pembayaran.</td></tr>';
