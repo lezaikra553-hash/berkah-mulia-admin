@@ -203,7 +203,7 @@
   </div>
 </div>
 <div class="portalTop">
-  <div class="brand">BERKAH MULIA ADV <span class="portalVersion">ERP V3 • PRINT ABSENSI & GAJI FIXED</span><small>Penawaran & Invoice • Kas Besar • Absensi & Penggajian</small></div>
+  <div class="brand">BERKAH MULIA ADV <span class="portalVersion">ERP V3 • PRINT LEMBUR RINGKAS</span><small>Penawaran & Invoice • Kas Besar • Absensi & Penggajian</small></div>
   <button id="btnDashboard" class="tabBtn active" onclick="openApp('dashboard')">📊 Dashboard</button>
 <button id="btnPenawaran" class="tabBtn" onclick="openApp('penawaran')">📄 Penawaran & Invoice</button>
   <button id="btnKas" class="tabBtn" onclick="openApp('kas')">💰 Kas Besar</button>
@@ -1679,6 +1679,109 @@ setTimeout(run,500);
 </body></html>`);
    w.document.close();
  }
+
+ function printOvertimeClean(d,w){
+   const select=d.getElementById('overtimeEmployee');
+   const selectedId=String(select?.value||'');
+   if(!selectedId){
+     alert('Pilih nama karyawan terlebih dahulu.');
+     return;
+   }
+
+   let renderedId='';
+   try{
+     if(typeof w.prepareSelectedOvertimeForPrint==='function'){
+       renderedId=String(w.prepareSelectedOvertimeForPrint()||'');
+     }else if(typeof w.renderOvertime==='function'){
+       renderedId=String(w.renderOvertime(selectedId)||'');
+     }
+   }catch(err){
+     console.error(err);
+   }
+
+   if(renderedId && renderedId!==selectedId){
+     alert('Data lembur belum berhasil diperbarui. Pilih ulang nama karyawan.');
+     return;
+   }
+
+   const table=d.querySelector('#overtimeWrap .ot-table');
+   if(!table){
+     alert('Tabel lembur belum tersedia.');
+     return;
+   }
+
+   const tableClone=table.cloneNode(true);
+   tableClone.querySelectorAll('input,textarea,select').forEach(el=>{
+     const span=d.createElement('span');
+     span.textContent=el.tagName==='SELECT'
+       ? (el.options[el.selectedIndex]?.text||'')
+       : (el.value||'');
+     el.replaceWith(span);
+   });
+   tableClone.querySelectorAll('button,.no-print').forEach(el=>el.remove());
+
+   const employeeName=select.options[select.selectedIndex]?.text||'';
+   let period='';
+   try{
+     period=typeof w.periodText==='function'
+       ? String(w.periodText()||'')
+       : '';
+   }catch(e){}
+   if(!period){
+     period=String(d.getElementById('overtimeTitle')?.textContent||'')
+       .replace(/^Lembur Harian\s*-\s*/i,'')
+       .replace(/\s*-\s*[^-]+$/,'')
+       .trim();
+   }
+
+   const pw=window.open('','_blank','width=1100,height=800');
+   if(!pw){
+     alert('Popup diblokir browser. Izinkan popup lalu coba lagi.');
+     return;
+   }
+
+   pw.document.write(`<!doctype html>
+   <html lang="id">
+   <head>
+     <meta charset="utf-8">
+     <title>LEMBUR HARIAN - ${esc(employeeName)}</title>
+     <style>
+       @page{size:A4 landscape;margin:12mm}
+       *{box-sizing:border-box}
+       body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:12px}
+       .head{text-align:center;margin-bottom:14px}
+       .head h1{font-size:18px;margin:0 0 3px;font-weight:900}
+       .head h2{font-size:15px;margin:0;font-weight:900}
+       .meta{margin:0 0 12px;line-height:1.7}
+       .meta div{display:flex;align-items:flex-start}
+       .meta b{display:inline-block;width:70px}
+       table{width:100%;border-collapse:collapse}
+       th,td{border:1px solid #94a3b8;padding:6px 7px;text-align:left;vertical-align:middle}
+       th{background:#f1f5f9;text-transform:uppercase;font-size:11px}
+       td:first-child,th:first-child{text-align:center;width:55px}
+       .ot-total td{font-weight:900;background:#f8fafc}
+       @media print{
+         body{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+       }
+     </style>
+   </head>
+   <body>
+     <div class="head">
+       <h1>BERKAH MULIA ADV</h1>
+       <h2>LEMBUR HARIAN</h2>
+     </div>
+     <div class="meta">
+       <div><b>Periode</b><span>: ${esc(period)}</span></div>
+       <div><b>Nama</b><span>: ${esc(employeeName)}</span></div>
+       <div><b>Standar</b><span>: Kerja 09.00–18.00, Lembur mulai 19.00</span></div>
+     </div>
+     ${tableClone.outerHTML}
+     <script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+   </body>
+   </html>`);
+   pw.document.close();
+ }
+
  window.muliaPrintDashboard=function(){printDoc('LAPORAN DASHBOARD',document.getElementById('pageDashboard'),true)};
  window.muliaPrintBagiHasil=function(){printDoc('LAPORAN BAGI HASIL',document.getElementById('pageBagiHasil'),true)};
  function addOuterButtons(){
@@ -1724,22 +1827,8 @@ setTimeout(run,500);
        e.stopPropagation();
 
        if(item.text==='Lembur Harian'){
-         try{
-           const select=d.getElementById('overtimeEmployee');
-           const selectedId=String(select?.value||'');
-           if(!selectedId){
-             alert('Pilih nama karyawan terlebih dahulu.');
-             return;
-           }
-
-           if(typeof w.prepareSelectedOvertimeForPrint==='function'){
-             w.prepareSelectedOvertimeForPrint();
-           }else if(typeof w.renderOvertime==='function'){
-             w.renderOvertime(selectedId);
-           }
-         }catch(err){
-           console.error('Gagal menyiapkan Lembur Harian:',err);
-         }
+         printOvertimeClean(d,w);
+         return;
        }
 
        requestAnimationFrame(()=>{
