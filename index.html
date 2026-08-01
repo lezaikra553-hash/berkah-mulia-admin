@@ -1633,6 +1633,59 @@ setTimeout(run,500);
    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
    @page{size:${landscape?'A4 landscape':'A4 portrait'};margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:12px}.ph{text-align:center;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:14px}.ph h1{font-size:18px;margin:0 0 4px}.ph h2{font-size:14px;margin:0}.ph p{font-size:10px;color:#64748b;margin:5px 0 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}th{background:#f1f5f9}.hero,.card,.enterpriseCard,.bhCard{box-shadow:none!important;border:1px solid #dbe3ee!important;margin-bottom:12px!important;padding:12px!important;background:#fff!important}.enterpriseGrid,.bhGrid,.grid4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.enterpriseTwo{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}button{display:none!important}.portalTop,.sidebar,.tabs,.nav,.toolbar{display:none!important}body>*{max-width:100%!important}.money{text-align:right}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body><div class="ph"><h1>${esc(COMPANY)}</h1><h2>${esc(title)}</h2><p>Dicetak: ${new Date().toLocaleString('id-ID')}</p></div>${clone.outerHTML}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
 
+</body></html>`);
+   w.document.close();
+ }
+ window.muliaPrintDashboard=function(){printDoc('LAPORAN DASHBOARD',document.getElementById('pageDashboard'),true)};
+ window.muliaPrintBagiHasil=function(){printDoc('LAPORAN BAGI HASIL',document.getElementById('pageBagiHasil'),true)};
+ function addOuterButtons(){
+   const dash=document.querySelector('#pageDashboard .hero');
+   if(dash&&!dash.querySelector('.inlineModulePrint')){const b=document.createElement('button');b.className='inlineModulePrint';b.textContent='🖨 Print Dashboard';b.onclick=muliaPrintDashboard;(dash.querySelector('.heroRight')||dash).appendChild(b)}
+   const bh=document.querySelector('#pageBagiHasil .hero');
+   if(bh&&!bh.querySelector('.inlineModulePrint')){const b=document.createElement('button');b.className='inlineModulePrint';b.textContent='🖨 Print Bagi Hasil';b.onclick=muliaPrintBagiHasil;(bh.querySelector('.heroRight')||bh).appendChild(b)}
+ }
+ function installAbsensiPrint(){
+   const fr=document.getElementById('frameAbsensi');if(!fr||!fr.contentDocument)return;
+   const d=fr.contentDocument;
+   let st=d.getElementById('muliaAbsensiPrintPatch');
+   if(!st){
+     st=d.createElement('style');st.id='muliaAbsensiPrintPatch';
+     st.textContent='.absHeadingPrint{margin-left:10px;border:0;border-radius:8px;background:#7c3aed;color:white;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;vertical-align:middle;white-space:nowrap}.absHeadingPrint:hover{filter:brightness(1.08)}@media print{.absHeadingPrint{display:none!important}}';
+     d.head.appendChild(st);
+   }
+   /* Bersihkan tombol tambahan versi lama. Tombol slip gaji bawaan aplikasi tidak disentuh. */
+   d.querySelectorAll('.absPrintBtn,.absPanelPrint').forEach(x=>x.remove());
+   const targets=[
+     {text:'Master Karyawan',title:'DATA KARYAWAN'},
+     {text:'Absensi Kalender',title:'REKAP ABSENSI'},
+     {text:'Lembur Harian',title:'REKAP LEMBUR'},
+     {text:'Rekap Gaji Otomatis',title:'REKAP PENGGAJIAN'}
+   ];
+   function headingFor(text){
+     const nodes=[...d.querySelectorAll('h1,h2,h3,h4,h5,h6,.title,.section-title,.card-title,.panel-title,strong,b,div,span')];
+     const exact=nodes.find(el=>el.children.length===0 && el.textContent.trim()===text);
+     if(exact)return exact;
+     return nodes.find(el=>el.children.length===0 && el.textContent.trim().startsWith(text));
+   }
+   function printableArea(el){
+     return el.closest('.panel,.tab-panel,.content-panel,.card,section,main') || el.parentElement;
+   }
+   targets.forEach(item=>{
+     const h=headingFor(item.text);if(!h)return;
+     const host=h.parentElement||h;
+     if(host.querySelector(':scope > .absHeadingPrint[data-for="'+item.text+'"]'))return;
+     const b=d.createElement('button');b.type='button';b.className='absHeadingPrint';b.dataset.for=item.text;b.textContent='🖨 Print';b.title='Print '+item.text;
+     b.onclick=e=>{e.preventDefault();e.stopPropagation();const area=printableArea(h);if(!area)return alert('Bagian '+item.text+' belum siap dicetak.');printDoc(item.title,area,true)};
+     h.insertAdjacentElement('afterend',b);
+   });
+ }
+ addOuterButtons();
+ const fr=document.getElementById('frameAbsensi');if(fr)fr.addEventListener('load',()=>setTimeout(installAbsensiPrint,300));
+ setInterval(()=>{addOuterButtons();installAbsensiPrint()},1200);
+})();
+</script>
+
+
 <script id="borongan-payroll-engine-v2">
 (function(){
 'use strict';
@@ -1686,7 +1739,7 @@ function ensureWorker(name){
  return w;
 }
 function migrate(){
- if(S.migrated)return;
+ if(S.migrated && S.entries.length)return;
  try{
    const old=JSON.parse(localStorage.getItem(OLD_KEY)||'null');
    if(old?.periods){
@@ -1703,15 +1756,19 @@ function migrate(){
    const year=new Date().getFullYear(),period=year+'-'+String(mi).padStart(2,'0');
    (Array.isArray(b?.operasional)?b.operasional:[]).filter(x=>{
      const src=String(x?.source||'').toUpperCase(),cat=String(x?.category||'').toUpperCase();
-     return src==='MANUAL-BORONGAN'||src.startsWith('EXCEL-BORONGAN-')||cat==='BORONGAN'||src==='BORONGAN_PAYROLL';
+     return src==='MANUAL-BORONGAN'||src.startsWith('EXCEL-BORONGAN-')||cat==='BORONGAN'||src==='BORONGAN_PAYROLL'||/^BORONGAN\b/i.test(String(x?.description||''));
    }).forEach(x=>{
      if(String(x.source||'').toUpperCase()==='BORONGAN_PAYROLL')return;
-     const w=ensureWorker(x.worker||x.employeeName||'Pekerja Lama');
-     const legacy='CASH-'+m+'-'+String(x.id||x.description||'')+'-'+num(x.amount);
+     const rawDesc=String(x.description||'Borongan').trim();
+     const wm=rawDesc.match(/^Borongan\s+([^—–-]+?)\s*[—–-]\s*(.*)$/i);
+     const parsedWorker=wm?wm[1].trim():'';
+     const parsedDesc=wm?wm[2].trim():rawDesc.replace(/^Borongan\s*/i,'').trim();
+     const w=ensureWorker(x.worker||x.employeeName||parsedWorker||'Pekerja Lama');
+     const legacy='CASH-'+m+'-'+String(x.id||rawDesc||'')+'-'+num(x.amount);
      if(S.entries.some(e=>e.legacyId===legacy))return;
      let date=String(x.date||period+'-01').replace(/^(\d{2})\/(\d{2})\/(\d{4})$/,'$3-$2-$1');
      if(!/^\d{4}-\d{2}-\d{2}$/.test(date))date=period+'-01';
-     S.entries.push({id:uid('E'),legacyId:legacy,date,workerId:w.id,description:String(x.description||'Borongan').replace(/^Borongan.*?-\s*/i,''),qty:num(x.qty)||1,unit:x.unit||'',rate:num(x.price||x.rate)||num(x.amount),amount:num(x.amount)});
+     S.entries.push({id:uid('E'),legacyId:legacy,date,workerId:w.id,description:parsedDesc||'Borongan lama',qty:num(x.qty)||1,unit:x.unit||'',rate:num(x.price||x.rate)||num(x.amount),amount:num(x.amount)});
    });
  });
  S.migrated=true;save();
@@ -1728,7 +1785,10 @@ function syncCash(){
  const db=readCash();db.transactions=db.transactions||{};
  Object.keys(db.transactions).forEach(m=>{
    const b=db.transactions[m]||{};
-   b.operasional=(Array.isArray(b.operasional)?b.operasional:[]).filter(x=>String(x?.source||'').toUpperCase()!=='BORONGAN_PAYROLL');
+   b.operasional=(Array.isArray(b.operasional)?b.operasional:[]).filter(x=>{
+     const src=String(x?.source||'').toUpperCase(),cat=String(x?.category||'').toUpperCase(),desc=String(x?.description||'');
+     return !(src==='BORONGAN_PAYROLL'||src==='MANUAL-BORONGAN'||src.startsWith('EXCEL-BORONGAN-')||cat==='BORONGAN'||/^Borongan\b/i.test(desc));
+   });
    db.transactions[m]=b;
  });
  S.payments.filter(x=>x.status==='DIBAYAR').forEach(p=>{
@@ -1844,59 +1904,5 @@ window.borInit=function(){
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{borInit()}catch(e){console.error(e)}},900));
 })();
 </script>
-
-
-</body></html>`);
-   w.document.close();
- }
- window.muliaPrintDashboard=function(){printDoc('LAPORAN DASHBOARD',document.getElementById('pageDashboard'),true)};
- window.muliaPrintBagiHasil=function(){printDoc('LAPORAN BAGI HASIL',document.getElementById('pageBagiHasil'),true)};
- function addOuterButtons(){
-   const dash=document.querySelector('#pageDashboard .hero');
-   if(dash&&!dash.querySelector('.inlineModulePrint')){const b=document.createElement('button');b.className='inlineModulePrint';b.textContent='🖨 Print Dashboard';b.onclick=muliaPrintDashboard;(dash.querySelector('.heroRight')||dash).appendChild(b)}
-   const bh=document.querySelector('#pageBagiHasil .hero');
-   if(bh&&!bh.querySelector('.inlineModulePrint')){const b=document.createElement('button');b.className='inlineModulePrint';b.textContent='🖨 Print Bagi Hasil';b.onclick=muliaPrintBagiHasil;(bh.querySelector('.heroRight')||bh).appendChild(b)}
- }
- function installAbsensiPrint(){
-   const fr=document.getElementById('frameAbsensi');if(!fr||!fr.contentDocument)return;
-   const d=fr.contentDocument;
-   let st=d.getElementById('muliaAbsensiPrintPatch');
-   if(!st){
-     st=d.createElement('style');st.id='muliaAbsensiPrintPatch';
-     st.textContent='.absHeadingPrint{margin-left:10px;border:0;border-radius:8px;background:#7c3aed;color:white;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;vertical-align:middle;white-space:nowrap}.absHeadingPrint:hover{filter:brightness(1.08)}@media print{.absHeadingPrint{display:none!important}}';
-     d.head.appendChild(st);
-   }
-   /* Bersihkan tombol tambahan versi lama. Tombol slip gaji bawaan aplikasi tidak disentuh. */
-   d.querySelectorAll('.absPrintBtn,.absPanelPrint').forEach(x=>x.remove());
-   const targets=[
-     {text:'Master Karyawan',title:'DATA KARYAWAN'},
-     {text:'Absensi Kalender',title:'REKAP ABSENSI'},
-     {text:'Lembur Harian',title:'REKAP LEMBUR'},
-     {text:'Rekap Gaji Otomatis',title:'REKAP PENGGAJIAN'}
-   ];
-   function headingFor(text){
-     const nodes=[...d.querySelectorAll('h1,h2,h3,h4,h5,h6,.title,.section-title,.card-title,.panel-title,strong,b,div,span')];
-     const exact=nodes.find(el=>el.children.length===0 && el.textContent.trim()===text);
-     if(exact)return exact;
-     return nodes.find(el=>el.children.length===0 && el.textContent.trim().startsWith(text));
-   }
-   function printableArea(el){
-     return el.closest('.panel,.tab-panel,.content-panel,.card,section,main') || el.parentElement;
-   }
-   targets.forEach(item=>{
-     const h=headingFor(item.text);if(!h)return;
-     const host=h.parentElement||h;
-     if(host.querySelector(':scope > .absHeadingPrint[data-for="'+item.text+'"]'))return;
-     const b=d.createElement('button');b.type='button';b.className='absHeadingPrint';b.dataset.for=item.text;b.textContent='🖨 Print';b.title='Print '+item.text;
-     b.onclick=e=>{e.preventDefault();e.stopPropagation();const area=printableArea(h);if(!area)return alert('Bagian '+item.text+' belum siap dicetak.');printDoc(item.title,area,true)};
-     h.insertAdjacentElement('afterend',b);
-   });
- }
- addOuterButtons();
- const fr=document.getElementById('frameAbsensi');if(fr)fr.addEventListener('load',()=>setTimeout(installAbsensiPrint,300));
- setInterval(()=>{addOuterButtons();installAbsensiPrint()},1200);
-})();
-</script>
-
 </body>
 </html>
