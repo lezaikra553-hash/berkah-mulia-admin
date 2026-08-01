@@ -151,6 +151,43 @@
 </style>
 
 
+
+<style id="borongan-slip-print-cleanup">
+@media print{
+  body.borPrintSlip #pageBorongan > .hero,
+  body.borPrintSlip #borMetrics,
+  body.borPrintSlip .borTabs,
+  body.borPrintSlip #borPane-master,
+  body.borPrintSlip #borPane-daily,
+  body.borPrintSlip #borPane-recap,
+  body.borPrintSlip #borPane-payment,
+  body.borPrintSlip #borPane-slip > .borCard.noPrint{
+    display:none!important;
+  }
+
+  body.borPrintSlip #borPane-slip{
+    display:block!important;
+  }
+
+  body.borPrintSlip #borPane-slip > .borCard{
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+
+  body.borPrintSlip #borSlipArea{
+    display:block!important;
+    margin:0 auto!important;
+    padding:0!important;
+    border:0!important;
+    box-shadow:none!important;
+    max-width:none!important;
+  }
+}
+</style>
+
 </head>
 <body>
 
@@ -1950,7 +1987,10 @@ window.borRenderSlip=function(){
  '</tbody></table></div><div class="borSlipTotal"><span>TOTAL DIBAYAR</span><span>'+money(total)+'</span></div><div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+esc(workerName(wid))+'</b></div></div>';
 };
 window.borPrintPane=function(name){
- document.querySelectorAll('.borPane').forEach(x=>x.classList.remove('printActive'));el('borPane-'+name)?.classList.add('printActive');setTimeout(()=>window.print(),80);
+ document.querySelectorAll('.borPane').forEach(x=>x.classList.remove('printActive'));
+ el('borPane-'+name)?.classList.add('printActive');
+ document.body.classList.toggle('borPrintSlip',name==='slip');
+ setTimeout(()=>window.print(),80);
 };
 window.borRender=function(){
  load();fillSelects();
@@ -1969,6 +2009,11 @@ window.borInit=function(){
  if(el('borWorkDate')&&!el('borWorkDate').value)el('borWorkDate').value=today();
  borRender();syncCash();
 };
+window.addEventListener('afterprint',function(){
+ document.body.classList.remove('borPrintSlip');
+ document.querySelectorAll('.borPane').forEach(x=>x.classList.remove('printActive'));
+});
+
 document.addEventListener('click',function(ev){
  const editBtn=ev.target.closest('.borWorkerEditBtn');
  if(editBtn){ev.preventDefault();ev.stopPropagation();borEditWorker(editBtn.dataset.workerId);return}
