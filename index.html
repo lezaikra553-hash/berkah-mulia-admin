@@ -233,7 +233,10 @@
 
   <div id="borPane-master" class="borPane active">
     <div class="borCard">
-      <h3>Master Pekerja Borongan</h3>
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+      <h3 style="margin:0">Master Pekerja Borongan</h3>
+      <span id="borWorkerEditInfo" class="borStatus">Mode Tambah Baru</span>
+    </div>
       <div class="borForm">
         <div class="borField"><label>Nama</label><input id="borMasterName" placeholder="Nama pekerja"></div>
         <div class="borField"><label>No. HP</label><input id="borMasterPhone" placeholder="08..."></div>
@@ -242,7 +245,7 @@
         <div class="borField"><label>Status</label><select id="borMasterStatus"><option>AKTIF</option><option>NONAKTIF</option></select></div>
         <div class="borActions">
       <button class="borBtn borGray" onclick="borNewWorker()">+ Tambah Baru</button>
-      <button class="borBtn borBlue" onclick="borSaveWorker()">Simpan Pekerja</button>
+      <button id="borWorkerSaveBtn" class="borBtn borBlue" onclick="borSaveWorker()">Simpan Pekerja</button>
     </div>
       </div>
     </div>
@@ -1841,18 +1844,35 @@ window.borNewWorker=function(){
  ['borMasterName','borMasterPhone','borMasterSkill'].forEach(id=>{if(el(id))el(id).value=''});
  if(el('borMasterRate'))el('borMasterRate').value=0;
  if(el('borMasterStatus'))el('borMasterStatus').value='AKTIF';
+ if(el('borWorkerSaveBtn'))el('borWorkerSaveBtn').textContent='Simpan Pekerja';
+ if(el('borWorkerEditInfo')){el('borWorkerEditInfo').textContent='Mode Tambah Baru';el('borWorkerEditInfo').className='borStatus';}
  el('borMasterName')?.focus();
 };
 window.borSaveWorker=function(){
  load();const name=el('borMasterName').value.trim();if(!name){alert('Nama pekerja wajib diisi.');return}
  const d={id:editWorkerId||uid('W'),name,phone:el('borMasterPhone').value.trim(),skill:el('borMasterSkill').value.trim(),rate:num(el('borMasterRate').value),status:el('borMasterStatus').value};
  const i=S.workers.findIndex(x=>x.id===d.id);if(i>=0)S.workers[i]=d;else S.workers.push(d);
- editWorkerId=null;['borMasterName','borMasterPhone','borMasterSkill'].forEach(id=>el(id).value='');el('borMasterRate').value=0;el('borMasterStatus').value='AKTIF';
- save();borRender();
+ save();
+ const wasEdit=!!editWorkerId;
+ borNewWorker();
+ borRender();
+ alert(wasEdit?'Data pekerja berhasil diperbarui.':'Pekerja baru berhasil ditambahkan.');
 };
 window.borEditWorker=function(id){
- load();const x=S.workers.find(w=>w.id===id);if(!x)return;editWorkerId=id;
- el('borMasterName').value=x.name;el('borMasterPhone').value=x.phone||'';el('borMasterSkill').value=x.skill||'';el('borMasterRate').value=x.rate||0;el('borMasterStatus').value=x.status||'AKTIF';
+ load();
+ const x=S.workers.find(w=>String(w.id)===String(id));
+ if(!x){alert('Data pekerja tidak ditemukan.');return}
+ editWorkerId=x.id;
+ el('borMasterName').value=x.name||'';
+ el('borMasterPhone').value=x.phone||'';
+ el('borMasterSkill').value=x.skill||'';
+ el('borMasterRate').value=x.rate||0;
+ el('borMasterStatus').value=x.status||'AKTIF';
+ if(el('borWorkerSaveBtn'))el('borWorkerSaveBtn').textContent='Update Pekerja';
+ if(el('borWorkerEditInfo')){el('borWorkerEditInfo').textContent='Edit: '+x.name;el('borWorkerEditInfo').className='borStatus paid';}
+ const form=el('borMasterName')?.closest('.borCard');
+ form?.scrollIntoView({behavior:'smooth',block:'start'});
+ setTimeout(()=>el('borMasterName')?.focus(),250);
 };
 window.borDeleteWorker=function(id){
  load();
@@ -1925,7 +1945,7 @@ window.borRender=function(){
  el('borMetrics').innerHTML=[
    ['Periode Aktif',periodLabel(p)],['Pekerja Aktif',S.workers.filter(x=>x.status==='AKTIF').length],['Total Borongan',money(total)],['Sudah Dibayar',money(paid)]
  ].map(x=>'<div class="borCard borMetric"><small>'+esc(x[0])+'</small><b>'+esc(x[1])+'</b></div>').join('');
- el('borWorkerRows').innerHTML=S.workers.length?S.workers.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.phone||'-')+'</td><td>'+esc(x.skill||'-')+'</td><td>'+money(x.rate)+'</td><td>'+esc(x.status)+'</td><td class="noPrint"><button class="borBtn borGray" onclick="borEditWorker(\''+x.id+'\')">Edit</button> <button class="borBtn borRed" onclick="borDeleteWorker(\''+x.id+'\')">Hapus</button></td></tr>').join(''):'<tr><td colspan="7">Belum ada pekerja.</td></tr>';
+ el('borWorkerRows').innerHTML=S.workers.length?S.workers.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.phone||'-')+'</td><td>'+esc(x.skill||'-')+'</td><td>'+money(x.rate)+'</td><td>'+esc(x.status)+'</td><td class="noPrint"><button type="button" class="borBtn borGray borWorkerEditBtn" data-worker-id="'+esc(x.id)+'">Edit</button> <button type="button" class="borBtn borRed borWorkerDeleteBtn" data-worker-id="'+esc(x.id)+'">Hapus</button></td></tr>').join(''):'<tr><td colspan="7">Belum ada pekerja.</td></tr>';
  el('borDailyRows').innerHTML=daily.length?daily.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.date)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+esc(x.description)+'</td><td>'+x.qty+'</td><td>'+esc(x.unit||'-')+'</td><td>'+money(x.rate)+'</td><td>'+money(entryTotal(x))+'</td><td class="noPrint"><button class="borBtn borGray" onclick="borEditEntry(\''+x.id+'\')">Edit</button> <button class="borBtn borRed" onclick="borDeleteEntry(\''+x.id+'\')">Hapus</button></td></tr>').join(''):'<tr><td colspan="9">Belum ada pekerjaan pada periode ini.</td></tr>';
  el('borRecapRows').innerHTML=r.length?r.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(workerName(x.workerId))+'</b></td><td>'+x.count+'</td><td>'+x.qty+'</td><td>'+money(x.total)+'</td><td><span class="borStatus '+(paymentFor(p,x.workerId)?'paid':'')+'">'+(paymentFor(p,x.workerId)?'DIBAYAR':'BELUM DIBAYAR')+'</span></td></tr>').join(''):'<tr><td colspan="6">Belum ada rekap.</td></tr>';
  el('borPaymentRows').innerHTML=S.payments.length?S.payments.slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate))).map(x=>'<tr><td>'+esc(periodLabel(x.period))+'</td><td>'+esc(x.paymentDate)+'</td><td>'+esc(x.method)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+money(x.amount)+'</td><td><span class="borStatus '+(x.status==='DIBAYAR'?'paid':'')+'">'+esc(x.status)+'</span></td><td class="noPrint">'+(x.status==='DIBAYAR'?'<button class="borBtn borRed" onclick="borCancelPayment(\''+x.id+'\')">Batalkan</button>':'-')+'</td></tr>').join(''):'<tr><td colspan="7">Belum ada pembayaran.</td></tr>';
@@ -1936,6 +1956,12 @@ window.borInit=function(){
  if(el('borWorkDate')&&!el('borWorkDate').value)el('borWorkDate').value=today();
  borRender();syncCash();
 };
+document.addEventListener('click',function(ev){
+ const editBtn=ev.target.closest('.borWorkerEditBtn');
+ if(editBtn){ev.preventDefault();ev.stopPropagation();borEditWorker(editBtn.dataset.workerId);return}
+ const delBtn=ev.target.closest('.borWorkerDeleteBtn');
+ if(delBtn){ev.preventDefault();ev.stopPropagation();borDeleteWorker(delBtn.dataset.workerId);return}
+});
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{borInit()}catch(e){console.error(e)}},900));
 })();
 </script>
