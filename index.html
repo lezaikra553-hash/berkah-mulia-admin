@@ -1745,16 +1745,22 @@ function ensureWorker(name){
  return w;
 }
 function migrationWorker(period,name){
- if(String(period)==='2026-07')return ensureWorker('Indra');
+ if(['2026-07','2026-08'].includes(String(period)))return ensureWorker('Indra');
  return ensureWorker(name||'Pekerja Lama');
 }
 function migrate(){
  if(S.migrated && S.entries.length){
-   if(!S.julyIndraCorrected){
+   if(!S.julyAugustIndraCorrected){
      const indra=ensureWorker('Indra');
-     S.entries.forEach(e=>{if(String(e.date||'').slice(0,7)==='2026-07')e.workerId=indra.id;});
-     S.payments.forEach(p=>{if(p.period==='2026-07')p.workerId=indra.id;});
-     S.julyIndraCorrected=true;save();
+     S.entries.forEach(e=>{
+       if(['2026-07','2026-08'].includes(String(e.date||'').slice(0,7)))e.workerId=indra.id;
+     });
+     S.payments.forEach(p=>{
+       if(['2026-07','2026-08'].includes(String(p.period||'')))p.workerId=indra.id;
+     });
+     S.julyIndraCorrected=true;
+     S.julyAugustIndraCorrected=true;
+     save();
    }
    return;
  }
@@ -1790,9 +1796,16 @@ function migrate(){
    });
  });
  const indra=ensureWorker('Indra');
- S.entries.forEach(e=>{if(String(e.date||'').slice(0,7)==='2026-07')e.workerId=indra.id;});
- S.payments.forEach(p=>{if(p.period==='2026-07')p.workerId=indra.id;});
- S.migrated=true;S.julyIndraCorrected=true;save();
+ S.entries.forEach(e=>{
+   if(['2026-07','2026-08'].includes(String(e.date||'').slice(0,7)))e.workerId=indra.id;
+ });
+ S.payments.forEach(p=>{
+   if(['2026-07','2026-08'].includes(String(p.period||'')))p.workerId=indra.id;
+ });
+ S.migrated=true;
+ S.julyIndraCorrected=true;
+ S.julyAugustIndraCorrected=true;
+ save();
 }
 function recap(period){
  const map={};
