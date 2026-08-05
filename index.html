@@ -552,15 +552,16 @@ function portalPayrollMonth(period){
  return {'2026-02':'februari','2026-03':'maret','2026-04':'april','2026-05':'mei','2026-06':'juni','2026-07':'juli','2026-08':'agustus','2026-09':'september','2026-10':'oktober','2026-11':'november','2026-12':'desember','2027-01':'januari'}[period]||''
 }
 function portalPayrollDate(period, requestedDate=''){
- const [y,m]=String(period||'').split('-').map(Number);
- const fallback=new Date();
  const iso=String(requestedDate||'').trim();
  if(/^\d{4}-\d{2}-\d{2}$/.test(iso)){
    const [yy,mm,dd]=iso.split('-').map(Number);
-   if(yy===y && mm===m && dd>=1 && dd<=new Date(yy,mm,0).getDate()) return String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
+   const maxDay=new Date(yy,mm,0).getDate();
+   if(yy>=2000 && mm>=1 && mm<=12 && dd>=1 && dd<=maxDay){
+     return String(dd).padStart(2,'0')+'/'+String(mm).padStart(2,'0')+'/'+yy;
+   }
  }
- if(fallback.getFullYear()===y && fallback.getMonth()+1===m) return String(fallback.getDate()).padStart(2,'0')+'/'+String(m).padStart(2,'0')+'/'+y;
- const d=new Date(y,m,0).getDate();return String(d).padStart(2,'0')+'/'+String(m).padStart(2,'0')+'/'+y;
+ const today=new Date();
+ return String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
 }
 function portalPayrollLabel(period){const n=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],[y,m]=period.split('-').map(Number);return n[m-1]+' '+y}
 function portalReceivePayroll(state,opt={}){
@@ -568,32 +569,76 @@ function portalReceivePayroll(state,opt={}){
  try{
    if(silent && opt.force!==true) return {ok:false,skipped:true,reason:'Payroll hanya dicatat melalui tindakan eksplisit.'};
    if(!state?.period)throw new Error('Periode payroll belum tersedia.');
-   const mk=portalPayrollMonth(state.period);if(!mk)throw new Error('Periode '+state.period+' belum tersedia di Kas Besar.');
-   const key='BM_V3_FRESH_KAS_ACTIVE_DB',fallback='BM_V3_FRESH_KAS_BESAR';
-   const raw=localStorage.getItem(key)||localStorage.getItem(fallback);
-   const db=raw?JSON.parse(raw):{fileName:'Kas Besar Terintegrasi',loadedAt:'',sheets:[],raw:{},summary:{},transactions:{},materials:[],receivables:[],rekap:{},bagi:{},note:[]};
-   db.transactions=db.transactions||{};db.transactions[mk]=db.transactions[mk]||{pemasukan:[],operasional:[],indra:[],andre:[]};
-   db.transactions[mk].operasional=(db.transactions[mk].operasional||[]).filter(x=>!(x?.source==='ABSENSI_PAYROLL'&&x.payrollPeriod===state.period));
-   let total=0,count=0;const label=portalPayrollLabel(state.period);
+   const label=portalPayrollLabel(state.period);
    let paymentIso=String(opt.paymentDate||'').trim();
    if(!paymentIso && !silent){
      const today=new Date();
-     const def=(today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0'));
+     const def=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
      paymentIso=prompt('Tanggal pembayaran gaji '+label+' (YYYY-MM-DD):',def)||'';
      if(!paymentIso) return {ok:false,cancelled:true};
    }
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(paymentIso)) throw new Error('Format tanggal pembayaran harus YYYY-MM-DD.');
+   const [payYear,payMonth,payDay]=paymentIso.split('-').map(Number);
+   const maxDay=new Date(payYear,payMonth,0).getDate();
+   if(payYear<2000||payMonth<1||payMonth>12||payDay<1||payDay>maxDay) throw new Error('Tanggal pembayaran tidak valid.');
+   const monthKeys=['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+   const cashMonthKey=monthKeys[payMonth-1];
    const date=portalPayrollDate(state.period,paymentIso);
-   (state.employees||[]).forEach(e=>{
-     if(!String(e.name||'').trim())return;const r=portalPayrollCalc(state,e);if(r.net<=0)return;
-     total+=r.net;count++;db.transactions[mk].operasional.push({date,description:'Gaji Karyawan - '+e.name.trim()+' - '+label,amount:r.net,source:'ABSENSI_PAYROLL',payrollPeriod:state.period,employeeId:e.id,employeeName:e.name.trim(),gross:r.gross,overtimeHours:r.hours,kasbonDeduction:r.kasbon,loanTotal:r.loanTotal,loanInstallmentDeduction:r.loanInstallment,loanInstallmentNo:r.loanInstallmentNo,loanPaid:r.loanPaid,loanRemaining:r.loanRemaining,syncedAt:new Date().toISOString()})
+
+   const key='BM_V3_FRESH_KAS_ACTIVE_DB',fallback='BM_V3_FRESH_KAS_BESAR';
+   const raw=localStorage.getItem(key)||localStorage.getItem(fallback);
+   const db=raw?JSON.parse(raw):{fileName:'Kas Besar Terintegrasi',loadedAt:'',sheets:[],raw:{},summary:{},transactions:{},materials:[],receivables:[],rekap:{},bagi:{},note:[]};
+   db.transactions=db.transactions||{};
+
+   // Hapus pencatatan payroll periode yang sama dari seluruh bulan agar tidak ganda
+   Object.keys(db.transactions).forEach(k=>{
+     const bucket=db.transactions[k];
+     if(bucket && Array.isArray(bucket.operasional)){
+       bucket.operasional=bucket.operasional.filter(x=>!(x?.source==='ABSENSI_PAYROLL'&&x.payrollPeriod===state.period));
+     }
    });
-   db.fileName=db.fileName||'Kas Besar Terintegrasi';db.loadedAt=new Date().toLocaleString('id-ID');
-   const payload=JSON.stringify(db);localStorage.setItem(key,payload);localStorage.setItem(fallback,payload);localStorage.setItem('BM_V3_KAS_LAST_SAVED_AT',new Date().toISOString());
-   localStorage.setItem(PORTAL_PAYROLL_SYNC_KEY,JSON.stringify({period:state.period,total,count,syncedAt:new Date().toISOString()}));
+
+   db.transactions[cashMonthKey]=db.transactions[cashMonthKey]||{pemasukan:[],operasional:[],indra:[],andre:[]};
+   db.transactions[cashMonthKey].operasional=db.transactions[cashMonthKey].operasional||[];
+
+   let total=0,count=0;
+   (state.employees||[]).forEach(e=>{
+     if(!String(e.name||'').trim())return;
+     const r=portalPayrollCalc(state,e);
+     if(r.net<=0)return;
+     total+=r.net;count++;
+     db.transactions[cashMonthKey].operasional.push({
+       date,
+       paymentDate:paymentIso,
+       description:'Gaji Karyawan - '+e.name.trim()+' - '+label,
+       amount:r.net,
+       source:'ABSENSI_PAYROLL',
+       payrollPeriod:state.period,
+       cashMonth:cashMonthKey,
+       employeeId:e.id,
+       employeeName:e.name.trim(),
+       gross:r.gross,
+       overtimeHours:r.hours,
+       kasbonDeduction:r.kasbon,
+       loanTotal:r.loanTotal,
+       loanInstallmentDeduction:r.loanInstallment,
+       loanInstallmentNo:r.loanInstallmentNo,
+       loanPaid:r.loanPaid,
+       loanRemaining:r.loanRemaining,
+       syncedAt:new Date().toISOString()
+     });
+   });
+   db.fileName=db.fileName||'Kas Besar Terintegrasi';
+   db.loadedAt=new Date().toLocaleString('id-ID');
+   const payload=JSON.stringify(db);
+   localStorage.setItem(key,payload);
+   localStorage.setItem(fallback,payload);
+   localStorage.setItem('BM_V3_KAS_LAST_SAVED_AT',new Date().toISOString());
+   localStorage.setItem(PORTAL_PAYROLL_SYNC_KEY,JSON.stringify({period:state.period,paymentDate:paymentIso,cashMonth:cashMonthKey,total,count,syncedAt:new Date().toISOString()}));
    try{const w=document.getElementById('frameKas')?.contentWindow;if(w&&typeof w.loadBrowser==='function'){w.loadBrowser();if(typeof w.renderAll==='function')w.renderAll()}}catch(e){}
    portalLastFingerprint='';try{portalWatchLocalChanges()}catch(e){}
-   if(!silent)alert('Gaji berhasil masuk Kas Besar.\nPeriode: '+label+'\nKaryawan: '+count+'\nTotal: Rp '+total.toLocaleString('id-ID'));
-   return {ok:true,total,count}
+   if(!silent)alert('Gaji berhasil masuk Kas Besar.\nPeriode gaji: '+label+'\nTanggal bayar: '+date+'\nMasuk kas bulan: '+cashMonthKey.charAt(0).toUpperCase()+cashMonthKey.slice(1)+'\nKaryawan: '+count+'\nTotal: Rp '+total.toLocaleString('id-ID'));
+   return {ok:true,total,count,paymentDate:paymentIso,cashMonth:cashMonthKey}
  }catch(e){console.error(e);if(!silent)alert('Sinkron gaji gagal: '+e.message);return {ok:false,error:e.message}}
 }
 window.portalReceivePayroll=portalReceivePayroll;
