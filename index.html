@@ -947,7 +947,31 @@ updatePortalGoogleUi();setInterval(updatePortalGoogleUi,2500);
  const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
  const calcDoc=x=>{const items=Array.isArray(x?.items)?x.items:[];const sub=items.reduce((a,i)=>a+num(i.qty)*num(i.price),0);const pct=num(x?.ppnPct),mode=x?.ppnMode||'none';let ppn=0,grand=sub;if(mode==='exclusive'){ppn=Math.round(sub*pct/100);grand=sub+ppn}else if(mode==='inclusive'){ppn=Math.round(sub-sub/(1+pct/100));grand=sub}return{sub,ppn,grand,dp:num(x?.dp),sisa:Math.max(0,grand-num(x?.dp))}};
  function getSales(){const d=read('BM_V3_FRESH_SALES_DB_V1')||{};const quotes=Array.isArray(d.quotes)?d.quotes:[], invoices=Array.isArray(d.invoices)?d.invoices:[];let invoiceValue=0,receivable=0;invoices.forEach(x=>{const c=calcDoc(x);invoiceValue+=c.grand;if(String(x.status||'').toUpperCase()!=='LUNAS')receivable+=c.sisa});const names=new Set([...quotes,...invoices].map(x=>String(x.customer||'').trim()).filter(Boolean));return{quotes:quotes.length,invoices:invoices.length,customers:names.size,invoiceValue,receivable}}
- function getKas(){const d=read('BM_V3_FRESH_KAS_ACTIVE_DB')||read('BM_V3_FRESH_KAS_BESAR')||{};const sc=d.summaryCalc||{},sm=d.summary||{};let income=num(sc.totalIncome),expense=num(sc.totalExpense),balance=num(sc.net),bank=num(sm.kasDiRekening),piutang=num(sc.piutangTotal),stock=num(sc.stockTotal),count=0;const tx=d.transactions||{};Object.values(tx).forEach(m=>{['pemasukan','operasional'].forEach(k=>count+=Array.isArray(m?.[k])?m[k].length:0)});if(!income&&!expense){Object.values(tx).forEach(m=>{income+=(m?.pemasukan||[]).reduce((a,x)=>a+num(x.amount),0);expense+=(m?.operasional||[]).reduce((z,x)=>z+num(x.amount),0)});balance=income-expense}return{income,expense,balance,bank:bank||balance,piutang,stock,count}}
+ function getKas(){
+  const d=read('BM_V3_FRESH_KAS_ACTIVE_DB')||read('BM_V3_FRESH_KAS_BESAR')||{};
+  const sc=d.summaryCalc||{},tx=d.transactions||{};
+  let income=0,expense=0,count=0;
+  Object.values(tx).forEach(m=>{
+    if(!m||typeof m!=='object')return;
+    const ins=Array.isArray(m.pemasukan)?m.pemasukan:[];
+    const outs=[...(Array.isArray(m.operasional)?m.operasional:[]),...(Array.isArray(m.pengeluaran)?m.pengeluaran:[])];
+    const seen=new Set();
+    ins.forEach(x=>{
+      const amt=num(x?.amount??x?.nominal??x?.total);
+      const inv=String(x?.invoiceNo||x?.invoiceId||'').trim().toUpperCase();
+      const dt=String(x?.paymentDate||x?.date||'').slice(0,10);
+      const source=String(x?.source||'').toUpperCase();
+      const key=source==='INVOICE'&&inv?'INV|'+inv+'|'+amt+'|'+dt:'';
+      if(key&&seen.has(key))return;
+      if(key)seen.add(key);
+      income+=amt;count++;
+    });
+    outs.forEach(x=>{expense+=num(x?.amount??x?.nominal??x?.total);count++});
+  });
+  if(!income&&!expense){income=num(sc.totalIncome);expense=num(sc.totalExpense)}
+  const balance=income-expense;
+  return {income,expense,balance,bank:balance,piutang:num(sc.piutangTotal),stock:num(sc.stockTotal),count};
+ }
  function getHR(){const d=read('BM_V3_FRESH_ABSENSI_GAJI_V1')||read('BM_V3_UNUSED_OLD_ABSENSI')||{};const em=Array.isArray(d.employees)?d.employees:[];let payroll=0;try{if(typeof portalPayrollCalc==='function')em.forEach(e=>payroll+=Math.max(0,portalPayrollCalc(d,e).net||0))}catch(e){}return{employees:em.length,payroll,period:d.period||''}}
  function syncInvoiceProjects(){
   const d=read('BM_V3_FRESH_SALES_DB_V1')||{};
@@ -974,7 +998,7 @@ function repaint(){syncInvoiceProjects();const e=ent||{projects:[],purchasing:[]
  const al=document.getElementById('ownerAlerts');if(al)al.innerHTML=(sales.receivable?`<div class="quickItem"><span>Invoice belum lunas</span><span class="pill">${money(sales.receivable)}</span></div>`:'')+(kas.piutang?`<div class="quickItem"><span>Piutang Kas Besar</span><span class="pill">${money(kas.piutang)}</span></div>`:'')+(low?`<div class="quickItem"><span>Stok minimum</span><span class="pill">${low} item</span></div>`:'')+(!sales.receivable&&!kas.piutang&&!low?'<div class="quickItem"><span>Tidak ada peringatan kritis</span><span class="pill">AMAN</span></div>':'');
  }
  window.renderEnterprise=repaint;
- window.addEventListener('storage',()=>setTimeout(repaint,50));setInterval(()=>{if(document.getElementById('pageDashboard')?.classList.contains('active'))repaint()},15000);setTimeout(repaint,300);
+ window.addEventListener('storage',()=>setTimeout(repaint,50));setInterval(()=>{if(document.getElementById('pageDashboard')?.classList.contains('active'))repaint()},30000);setTimeout(repaint,300);
  const oldRenderOps=window.renderOps;window.renderOps=function(){try{return oldRenderOps()}catch(err){const el=document.getElementById('opsContent');if(el)el.innerHTML='<div class="emptyState">Belum ada data operasional. Klik <b>+ Tambah Data</b> untuk mulai.</div>';console.error(err)}};
 })();
 </script>
@@ -1070,7 +1094,7 @@ function refresh(){build(); try{repaint()}catch(e){try{renderEnterprise()}catch(
 window.MuliaUnifiedSync={refresh,masterKey:MASTER,setProjectStatus:function(invoiceNo,status){const k=String(invoiceNo||'').toLowerCase();const p=(ent.projects||[]).find(x=>String(x.autoInvoiceKey||x.invoiceNo||x.autoKey||'').toLowerCase()===k);if(p){p.status=normalizeStatus(status,p.status);saveEnt('Status project '+invoiceNo+' → '+p.status);refresh();return true}return false}};
 ['framePenawaran','frameKas','frameAbsensi'].forEach(id=>document.getElementById(id)?.addEventListener('load',()=>setTimeout(refresh,500)));
 window.addEventListener('storage',refresh);
-setInterval(refresh,15000);
+setInterval(refresh,30000);
 setTimeout(refresh,250);
 })();
 </script>
@@ -1169,7 +1193,7 @@ function refreshDwiDashboard(){
 window.portalDataChanged=function(){clearTimeout(window.__dmaDashTimer);window.__dmaDashTimer=setTimeout(refreshDwiDashboard,180)};
 window.addEventListener('storage',refreshDwiDashboard);
 window.addEventListener('message',refreshDwiDashboard);
-setInterval(()=>{if(document.getElementById('pageDashboard')?.classList.contains('active'))refreshDwiDashboard()},5000);
+setInterval(()=>{if(document.getElementById('pageDashboard')?.classList.contains('active'))refreshDwiDashboard()},30000);
 setTimeout(refreshDwiDashboard,300);
 })();
 </script>
@@ -1180,7 +1204,7 @@ setTimeout(refreshDwiDashboard,300);
 <script id="mulia-master-contract-v2">
 (function(){
 "use strict";
-const CFG = {"out": "BERKAH_MULIA_V3", "code": "BERKAH", "name": "CV. BERKAH MULIA ADV", "sales": "BM_SALES_DB_V1", "kas": "BM_KAS_BESAR_ACTIVE_DB", "hr": "BM_ABSENSI_GAJI_V4", "contract": "BM_COMPANY_CONTRACT_V2", "snapshot": "BM_OWNER_SNAPSHOT_V1"};
+const CFG = {"out": "BERKAH_MULIA_V3", "code": "BERKAH", "name": "CV. BERKAH MULIA ADV", "sales": "BM_V3_FRESH_SALES_DB_V1", "kas": "BM_V3_FRESH_KAS_ACTIVE_DB", "hr": "BM_V3_FRESH_ABSENSI_GAJI_V1", "contract": "BM_COMPANY_CONTRACT_V2", "snapshot": "BM_OWNER_SNAPSHOT_V1"};
 
 function readJSON(key, fallback){
   try{
@@ -1248,7 +1272,10 @@ function buildSnapshot(){
   const receivable = invoices.reduce(function(s,x){return s+outstanding(x)},0);
 
   let income=0, expense=0, balance=0;
-  const tx = kas.transactions || kas.entries || kas.data || [];
+  const tx = kas.transactions || kas.entries || kas.data || {};
+  const sumRows=function(rows){
+    return (Array.isArray(rows)?rows:[]).reduce(function(s,x){return s+num(x && (x.amount ?? x.nominal ?? x.total ?? x.value));},0);
+  };
   if(Array.isArray(tx)){
     tx.forEach(function(t){
       const type=String(t.type || t.jenis || t.category || "").toLowerCase();
@@ -1256,10 +1283,15 @@ function buildSnapshot(){
       if(/masuk|income|pemasukan|debit/.test(type)) income+=val;
       if(/keluar|expense|pengeluaran|credit/.test(type)) expense+=val;
     });
-    balance=income-expense;
+  }else if(tx && typeof tx==='object'){
+    Object.keys(tx).forEach(function(month){
+      const row=tx[month]||{};
+      income+=sumRows(row.pemasukan);
+      expense+=sumRows(row.operasional);
+      expense+=sumRows(row.pengeluaran);
+    });
   }
-  if(Number.isFinite(Number(kas.balance))) balance=num(kas.balance);
-  if(Number.isFinite(Number(kas.saldo))) balance=num(kas.saldo);
+  balance=income-expense;
 
   const employees = Array.isArray(hr.employees) ? hr.employees.length :
                     Array.isArray(hr.karyawan) ? hr.karyawan.length : 0;
@@ -1331,7 +1363,7 @@ window.addEventListener("storage",function(e){
   if([CFG.sales,CFG.kas,CFG.hr].includes(e.key)) publish();
 });
 window.addEventListener("portalDataChanged",publish);
-setInterval(publish,30000);
+setInterval(publish,60000);
 })();
 </script>
 
@@ -1527,7 +1559,14 @@ function syncInvoicePaymentsToCash(){
    const rawPayments=Array.isArray(inv.pembayaran)&&inv.pembayaran.length
      ? inv.pembayaran.map((p,i)=>({amount:num(p?.amount??p?.nominal??p?.value),date:p?.date??p?.tanggal??inv.updatedAt??inv.date,key:String(p?.id??p?.paymentId??i)}))
      : [{amount:paid(inv),date:inv.paymentDate??inv.updatedAt??inv.date,key:'TOTAL'}];
+   const uniquePayments=[],seenPayments=new Set();
    rawPayments.filter(p=>p.amount>0).forEach(p=>{
+     const dedupeKey=String(p.key||'')+'|'+p.amount+'|'+isoDate(p.date);
+     if(seenPayments.has(dedupeKey))return;
+     seenPayments.add(dedupeKey);
+     uniquePayments.push(p);
+   });
+   uniquePayments.forEach(p=>{
      const paymentDate=isoDate(p.date), mk=monthKey(paymentDate);
      kas.transactions[mk]=kas.transactions[mk]||{pemasukan:[],operasional:[]};
      kas.transactions[mk].pemasukan=Array.isArray(kas.transactions[mk].pemasukan)?kas.transactions[mk].pemasukan:[];
@@ -1588,7 +1627,7 @@ window.MuliaIntegrationV3={run,ensureInvoiceFromDeal,syncInvoicePaymentsToCash,b
 window.addEventListener('storage',e=>{if([C.sales,C.kas,C.hr,C.borongan].filter(Boolean).includes(e.key))setTimeout(run,20)});
 window.addEventListener('message',()=>setTimeout(run,20));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)run()});
-document.addEventListener('DOMContentLoaded',()=>{run();setInterval(run,5000)});
+document.addEventListener('DOMContentLoaded',()=>{run();setInterval(run,30000)});
 setTimeout(run,500);
 })();
 </script>
@@ -2189,6 +2228,28 @@ document.addEventListener('click',function(ev){
  if(delBtn){ev.preventDefault();ev.stopPropagation();borDeleteWorker(delBtn.dataset.workerId);return}
 });
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{borInit()}catch(e){console.error(e)}},900));
+})();
+</script>
+<script id="berkah-v310-final-consistency">
+(function(){
+'use strict';
+if(window.__BERKAH_V310_FINAL__)return;
+window.__BERKAH_V310_FINAL__=true;
+let timer=0;
+function sync(){
+ try{
+  window.MuliaIntegrationV3?.run?.();
+  window.MuliaGroupBridge?.publish?.();
+  window.MuliaUnifiedSync?.refresh?.();
+  window.renderEnterprise?.();
+  window.bhRenderSimple?.();
+ }catch(e){console.warn('Berkah final sync:',e)}
+}
+function schedule(){clearTimeout(timer);timer=setTimeout(sync,80)}
+['BM_V3_FRESH_SALES_DB_V1','BM_V3_FRESH_KAS_ACTIVE_DB','BM_V3_FRESH_KAS_BESAR','BM_V3_FRESH_ABSENSI_GAJI_V1','BM_BAGI_HASIL_SIMPLE_V1','BM_ENTERPRISE_V2'].forEach(k=>window.addEventListener('storage',e=>{if(e.key===k)schedule()}));
+window.addEventListener('message',e=>{const t=String(e.data?.type||e.data?.action||'');if(/save|saved|update|delete|restore|sync|invoice|payment|kas|payroll|absensi/i.test(t))schedule()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')schedule()});
+setTimeout(sync,300);
 })();
 </script>
 </body>
