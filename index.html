@@ -188,6 +188,16 @@
 }
 </style>
 
+
+<!-- Borongan Smart Import dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+
+<style id="borongan-smart-import-css">
+.borImportModal{position:fixed;inset:0;z-index:2000020;background:rgba(2,6,23,.72);display:none;align-items:center;justify-content:center;padding:16px}.borImportModal.open{display:flex}.borImportBox{width:min(1250px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.borImportHead{position:sticky;top:0;z-index:3;background:linear-gradient(135deg,#0f172a,#92400e);color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.borImportHead h2{margin:0;font-size:20px}.borImportHead p{margin:5px 0 0;color:#fde68a;font-size:12px}.borImportClose{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:10px;width:38px;height:38px;font-size:22px;cursor:pointer}.borImportBody{padding:16px}.borImportTop{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;align-items:end}.borImportTools,.borImportFoot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.borImportTable input[type=text],.borImportTable input[type=number]{width:100%;min-width:90px;border:1px solid #cbd5e1;border-radius:8px;padding:7px}.borImportTable input[data-field=description]{min-width:260px}.borImportTable td{vertical-align:middle}.borImportProgress{background:#fef3c7!important;color:#92400e!important}.borImportSuccess{background:#dcfce7!important;color:#047857!important}.borImportError{background:#fee2e2!important;color:#991b1b!important}@media(max-width:850px){.borImportTop{grid-template-columns:1fr 1fr}.borImportTable{min-width:900px}}@media(max-width:560px){.borImportTop{grid-template-columns:1fr}.borImportBody{padding:10px}}
+</style>
+
 </head>
 <body>
 
@@ -300,7 +310,11 @@
         <div class="borField"><label>Satuan</label><input id="borWorkUnit" placeholder="pcs/unit"></div>
         <div class="borField"><label>Harga Satuan</label><input id="borWorkRate" type="number" min="0" value="0"></div>
       </div>
-      <div class="borActions" style="margin-top:10px"><button class="borBtn borBlue" onclick="borAddEntry()">Tambah Pekerjaan</button></div>
+      <div class="borActions" style="margin-top:10px">
+        <button class="borBtn borBlue" onclick="borAddEntry()">Tambah Pekerjaan</button>
+        <button class="borBtn borOrange" onclick="borOpenSmartImport()">📥 Import Foto / PDF / Excel</button>
+      </div>
+      <div class="borInfo" style="margin-top:10px">Import cetakan akan membaca file, menyesuaikan hasil ke kolom Pekerjaan, Qty, Satuan dan Harga Satuan, lalu menampilkan preview sebelum disimpan.</div>
     </div>
     <div class="borCard"><div style="overflow:auto"><table class="borTable"><thead><tr><th>No</th><th>Tanggal</th><th>Pekerja</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th><th class="noPrint">Aksi</th></tr></thead><tbody id="borDailyRows"></tbody></table></div></div>
   </div>
@@ -343,6 +357,37 @@
     <div class="borCard"><div id="borSlipArea" class="borSlip"></div></div>
   </div>
 </section>
+
+
+<!-- ===== BORONGAN SMART IMPORT ===== -->
+<div id="borImportModal" class="borImportModal" aria-hidden="true">
+  <div class="borImportBox">
+    <div class="borImportHead">
+      <div><h2>📥 Import Cetakan Borongan</h2><p>Foto/JPG/PNG, PDF, Excel/XLS/XLSX/CSV • hasil bisa dikoreksi sebelum masuk data borongan.</p></div>
+      <button class="borImportClose" onclick="borCloseSmartImport()">×</button>
+    </div>
+    <div class="borImportBody">
+      <div class="borImportTop">
+        <div class="borField"><label>File Cetakan</label><input id="borImportFile" type="file" accept="image/*,.pdf,.xls,.xlsx,.csv" onchange="borReadImportFile(event)"></div>
+        <div class="borField"><label>Tanggal Kerja</label><input id="borImportDate" type="date"></div>
+        <div class="borField"><label>Pekerja Default</label><select id="borImportWorker"></select></div>
+        <div class="borField"><label>Harga Default</label><input id="borImportDefaultRate" type="number" min="0" value="0" placeholder="Jika file tanpa harga"></div>
+      </div>
+      <div id="borImportStatus" class="borInfo" style="margin:12px 0">Pilih file untuk mulai membaca cetakan.</div>
+      <div class="borImportTools">
+        <button class="borBtn borGray" onclick="borImportReparse()">🔄 Baca Ulang Teks</button>
+        <button class="borBtn borGray" onclick="borImportAddBlankRow()">+ Tambah Baris</button>
+        <button class="borBtn borRed" onclick="borImportClearRows()">Kosongkan Preview</button>
+      </div>
+      <details style="margin:12px 0"><summary style="font-weight:900;cursor:pointer">Teks hasil pembacaan / OCR</summary><textarea id="borImportRawText" style="width:100%;min-height:120px;margin-top:8px;border:1px solid #cbd5e1;border-radius:10px;padding:10px" placeholder="Teks hasil PDF/OCR akan tampil di sini. Bisa diedit lalu klik Baca Ulang Teks."></textarea></details>
+      <div style="overflow:auto;max-height:45vh"><table class="borTable borImportTable"><thead><tr><th>No</th><th>✓</th><th>Pekerjaan / Cetakan</th><th>Qty</th><th>Satuan</th><th>Harga Satuan</th><th>Total</th><th>Aksi</th></tr></thead><tbody id="borImportRows"><tr><td colspan="8">Belum ada data hasil baca.</td></tr></tbody></table></div>
+      <div class="borImportFoot">
+        <div id="borImportSummary" class="borInfo">0 item siap diimport.</div>
+        <div class="borActions"><button class="borBtn borGray" onclick="borCloseSmartImport()">Batal</button><button class="borBtn borGreen" onclick="borCommitSmartImport()">✅ Import Semua yang Dicentang</button></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <section id="pageBagiHasil" class="commandPage">
   <div class="hero">
@@ -1745,6 +1790,7 @@ setTimeout(run,500);
    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
    @page{size:${landscape?'A4 landscape':'A4 portrait'};margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:12px}.ph{text-align:center;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:14px}.ph h1{font-size:18px;margin:0 0 4px}.ph h2{font-size:14px;margin:0}.ph p{font-size:10px;color:#64748b;margin:5px 0 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}th{background:#f1f5f9}.hero,.card,.enterpriseCard,.bhCard{box-shadow:none!important;border:1px solid #dbe3ee!important;margin-bottom:12px!important;padding:12px!important;background:#fff!important}.enterpriseGrid,.bhGrid,.grid4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.enterpriseTwo{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}button{display:none!important}.portalTop,.sidebar,.tabs,.nav,.toolbar{display:none!important}body>*{max-width:100%!important}.money{text-align:right}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body><div class="ph"><h1>${esc(COMPANY)}</h1><h2>${esc(title)}</h2><p>Dicetak: ${new Date().toLocaleString('id-ID')}</p></div>${clone.outerHTML}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
 
+\n\n
 </body></html>`);
    w.document.close();
  }
@@ -2213,6 +2259,15 @@ document.addEventListener('click',function(ev){
  if(delBtn){ev.preventDefault();ev.stopPropagation();borDeleteWorker(delBtn.dataset.workerId);return}
 });
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{borInit()}catch(e){console.error(e)}},900));
+window.BoronganAPI={
+ getState:function(){load();return S;},
+ getWorkers:function(){load();return S.workers.slice();},
+ addImportedEntries:function(rows){
+   load();
+   (rows||[]).forEach(r=>S.entries.push({id:uid('E'),date:r.date,workerId:r.workerId,description:r.description,qty:num(r.qty)||1,unit:r.unit||'',rate:num(r.rate),amount:(num(r.qty)||1)*num(r.rate),imported:true,importedAt:new Date().toISOString()}));
+   save();borRender();return (rows||[]).length;
+ }
+};
 })();
 </script>
 
@@ -2298,6 +2353,186 @@ window.addEventListener('storage',e=>{
      'BM_V3_FRESH_ABSENSI_GAJI_V1','BM_ABSENSI_GAJI_V4'].includes(e.key)) refresh();
 });
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
+})();
+</script>
+
+<script id="borongan-smart-import-js">
+(function(){
+  let importRows=[];
+  let importRawText='';
+  const $=id=>document.getElementById(id);
+  const clean=s=>String(s??'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+  const n=v=>{
+    if(typeof v==='number'&&isFinite(v))return v;
+    let x=String(v??'').trim().replace(/Rp\.?\s*/ig,'').replace(/\s/g,'');
+    if(!x)return 0;
+    // Indonesian money: 12.500 or 12.500,50
+    if(/^[-+]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(x)) x=x.replace(/\./g,'').replace(',','.');
+    else if(/^[-+]?\d+(,\d+)$/.test(x)) x=x.replace(',','.');
+    else x=x.replace(/,/g,'');
+    const y=parseFloat(x.replace(/[^0-9.\-]/g,''));return isFinite(y)?y:0;
+  };
+  const esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  function status(msg,type=''){const el=$('borImportStatus');if(!el)return;el.textContent=msg;el.className='borInfo '+(type?('borImport'+type):'');}
+  function currentDate(){return $('borWorkDate')?.value||new Date().toISOString().slice(0,10)}
+  function fillWorkers(){
+    try{ if(typeof load==='function')load(); }catch(e){}
+    const sel=$('borImportWorker'), daily=$('borWorkerSelect'); if(!sel)return;
+    const workers=(window.BoronganAPI?.getWorkers?.()||[]).filter(x=>x.status==='AKTIF');
+    sel.innerHTML='<option value="">Pilih pekerja</option>'+workers.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
+    sel.value=daily?.value||workers[0]?.id||'';
+  }
+  window.borOpenSmartImport=function(){
+    fillWorkers();$('borImportDate').value=currentDate();
+    const wid=$('borImportWorker').value; const wr=(window.BoronganAPI?.getWorkers?.()||[]).find(x=>String(x.id)===String(wid));
+    $('borImportDefaultRate').value=$('borWorkRate')?.value||wr?.rate||0;
+    $('borImportModal').classList.add('open');$('borImportModal').setAttribute('aria-hidden','false');
+    renderRows();
+  };
+  window.borCloseSmartImport=function(){$('borImportModal').classList.remove('open');$('borImportModal').setAttribute('aria-hidden','true')};
+  function addRow(r={}){importRows.push({use:r.use!==false,description:clean(r.description),qty:n(r.qty)||1,unit:clean(r.unit)||'pcs',rate:n(r.rate),source:r.source||''});}
+  window.borImportAddBlankRow=function(){addRow({description:'',qty:1,unit:'pcs',rate:n($('borImportDefaultRate').value)});renderRows()};
+  window.borImportClearRows=function(){if(importRows.length&&!confirm('Kosongkan semua hasil preview import?'))return;importRows=[];renderRows()};
+  window.borImportDeleteRow=function(i){importRows.splice(i,1);renderRows()};
+  window.borImportRowChange=function(i,field,val){if(!importRows[i])return;importRows[i][field]=(field==='qty'||field==='rate')?n(val):(field==='use'?!!val:val);renderSummaryOnly()};
+  function renderRows(){
+    const tb=$('borImportRows'); if(!tb)return;
+    if(!importRows.length){tb.innerHTML='<tr><td colspan="8">Belum ada data hasil baca.</td></tr>';renderSummaryOnly();return}
+    tb.innerHTML=importRows.map((r,i)=>'<tr>'+
+      '<td>'+(i+1)+'</td><td><input type="checkbox" '+(r.use?'checked':'')+' onchange="borImportRowChange('+i+',\'use\',this.checked)"></td>'+
+      '<td><input data-field="description" type="text" value="'+esc(r.description)+'" onchange="borImportRowChange('+i+',\'description\',this.value)"></td>'+
+      '<td><input type="number" min="0" step="0.01" value="'+(r.qty||1)+'" onchange="borImportRowChange('+i+',\'qty\',this.value)"></td>'+
+      '<td><input type="text" value="'+esc(r.unit||'pcs')+'" onchange="borImportRowChange('+i+',\'unit\',this.value)"></td>'+
+      '<td><input type="number" min="0" step="1" value="'+(r.rate||0)+'" onchange="borImportRowChange('+i+',\'rate\',this.value)"></td>'+
+      '<td>'+new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format((r.qty||0)*(r.rate||0))+'</td>'+
+      '<td><button class="borBtn borRed" onclick="borImportDeleteRow('+i+')">Hapus</button></td></tr>').join('');
+    renderSummaryOnly();
+  }
+  function renderSummaryOnly(){
+    const rows=importRows.filter(r=>r.use&&clean(r.description)); const total=rows.reduce((a,r)=>a+n(r.qty)*n(r.rate),0);
+    $('borImportSummary').textContent=rows.length+' item dicentang • Total borongan '+new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(total);
+  }
+  function normHeader(v){return clean(v).toLowerCase().replace(/[._/\\-]+/g,' ').replace(/\s+/g,' ')}
+  const aliases={
+    description:['pekerjaan','nama pekerjaan','item','nama item','cetakan','nama cetakan','uraian','deskripsi','description','keterangan','produk','nama produk','jenis cetakan'],
+    qty:['qty','quantity','jumlah','jml','volume','banyak','pcs'],
+    unit:['satuan','unit','sat'],
+    rate:['harga satuan','harga/pcs','harga pcs','harga','rate','tarif','upah','borongan','harga borongan'],
+    total:['total','jumlah harga','subtotal','amount','nilai'],
+    date:['tanggal','tgl','date'],
+    worker:['pekerja','nama pekerja','operator','nama operator']
+  };
+  function detectHeader(rows){
+    let best={idx:-1,score:0,map:{}};
+    rows.slice(0,20).forEach((row,idx)=>{let map={},score=0;(row||[]).forEach((v,j)=>{const h=normHeader(v);Object.entries(aliases).forEach(([k,list])=>{if(!map[k]&&list.some(a=>h===a||h.includes(a))){map[k]=j;score++}})});if(score>best.score)best={idx,score,map}});
+    return best;
+  }
+  function rowsFromMatrix(matrix){
+    const cleanRows=matrix.map(r=>(r||[]).map(v=>clean(v))).filter(r=>r.some(Boolean)); if(!cleanRows.length)return[];
+    const h=detectHeader(cleanRows), out=[];
+    if(h.score>=2&&h.map.description!==undefined){
+      cleanRows.slice(h.idx+1).forEach(row=>{
+        const d=clean(row[h.map.description]); if(!d)return;
+        let qty=h.map.qty!==undefined?n(row[h.map.qty]):1; if(!qty)qty=1;
+        const unit=h.map.unit!==undefined?clean(row[h.map.unit]):'pcs';
+        let rate=h.map.rate!==undefined?n(row[h.map.rate]):0;
+        const total=h.map.total!==undefined?n(row[h.map.total]):0; if(!rate&&total&&qty)rate=total/qty;
+        out.push({description:d,qty,unit:unit||'pcs',rate,source:'table'});
+      });
+      return out;
+    }
+    // fallback: every non-empty row becomes a line parser candidate
+    return parseText(cleanRows.map(r=>r.join(' | ')).join('\n'));
+  }
+  function isNoise(line){
+    const l=line.toLowerCase(); return !line||/^(no|no\.|nomor|qty|jumlah|satuan|harga|total|pekerjaan|item)(\s*\||\s*$)/i.test(line)||/(grand total|subtotal|terbilang|invoice|quotation|penawaran|alamat|telepon|telp|tanggal\s*:|customer\s*:)/i.test(l);
+  }
+  function parseLine(line){
+    line=clean(line.replace(/[•●▪]/g,' ')); if(isNoise(line)||line.length<2)return null;
+    line=line.replace(/^\s*\d+[.)-]\s*/,'');
+    const parts=line.split(/\s*\|\s*|\t+|\s{2,}/).map(clean).filter(Boolean);
+    let description='',qty=1,unit='pcs',rate=0,total=0;
+    if(parts.length>=2){
+      const vals=parts.slice();
+      // locate numeric qty/unit/rate from right side while keeping description left
+      let descParts=[];
+      vals.forEach((v,idx)=>{
+        const qm=v.match(/^(\d+(?:[.,]\d+)?)\s*(pcs|pc|unit|set|lembar|lbr|meter|m|m2|m²|roll|buah|bh|kg)?$/i);
+        if(idx>0&&qm&&qty===1){qty=n(qm[1])||1;if(qm[2])unit=qm[2];return}
+        const money=/^(?:rp\.?\s*)?[\d.,]+$/i.test(v)&&n(v)>0;
+        if(idx>0&&money){if(!rate)rate=n(v);else total=n(v);return}
+        if(/^(pcs|pc|unit|set|lembar|lbr|meter|m|m2|m²|roll|buah|bh|kg)$/i.test(v)){unit=v;return}
+        descParts.push(v);
+      });
+      description=clean(descParts.join(' ')); if(total&&qty&&(!rate||Math.abs(total-rate)<1))rate=total/qty;
+    }else{
+      // Regex for OCR lines e.g. Sticker Warning 20 pcs 5.000 100.000
+      const m=line.match(/^(.*?)[\s|]+(\d+(?:[.,]\d+)?)\s*(pcs|pc|unit|set|lembar|lbr|meter|m2|m²|roll|buah|bh|kg)?(?:[\s|]+(?:Rp\.?\s*)?([\d.,]+))?(?:[\s|]+(?:Rp\.?\s*)?([\d.,]+))?$/i);
+      if(m&&clean(m[1]).length>=2){description=clean(m[1]);qty=n(m[2])||1;unit=m[3]||'pcs';rate=n(m[4]);total=n(m[5]);if(total&&qty&&!rate)rate=total/qty;}else description=line;
+    }
+    description=description.replace(/^[-–—:]+|[-–—:]+$/g,'').trim();
+    if(!description||/^\d+[\d.,]*$/.test(description))return null;
+    return {description,qty:qty||1,unit:unit||'pcs',rate:rate||0,source:'text'};
+  }
+  function parseText(text){return String(text||'').split(/\r?\n/).map(parseLine).filter(Boolean)}
+  function applyDefaultRate(rows){const def=n($('borImportDefaultRate')?.value);return rows.map(r=>({...r,rate:n(r.rate)||def}))}
+  async function readExcel(file){
+    if(!window.XLSX)throw new Error('Library Excel belum termuat. Pastikan internet aktif lalu coba lagi.');
+    const ab=await file.arrayBuffer(), wb=XLSX.read(ab,{type:'array',cellDates:false}); let all=[];
+    wb.SheetNames.forEach(name=>{const m=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:false,defval:''});const r=rowsFromMatrix(m);all=all.concat(r)}); return all;
+  }
+  async function getPdfJs(){
+    if(window.__MULIA_PDFJS)return window.__MULIA_PDFJS;
+    const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs'; window.__MULIA_PDFJS=pdfjs;return pdfjs;
+  }
+  async function ocrImageLike(source,label){
+    if(!window.Tesseract)throw new Error('Library OCR belum termuat. Pastikan internet aktif lalu coba lagi.');
+    status('Membaca '+label+' dengan OCR… proses tergantung ukuran file.','Progress');
+    const res=await Tesseract.recognize(source,'eng',{logger:m=>{if(m.status==='recognizing text')status('OCR '+label+' '+Math.round((m.progress||0)*100)+'%','Progress')}});
+    return res?.data?.text||'';
+  }
+  async function readPdf(file){
+    const pdfjs=await getPdfJs(), ab=await file.arrayBuffer(), pdf=await pdfjs.getDocument({data:ab}).promise; let text='',matrix=[];
+    for(let p=1;p<=pdf.numPages;p++){
+      status('Membaca PDF halaman '+p+' dari '+pdf.numPages+'…','Progress'); const page=await pdf.getPage(p);const tc=await page.getTextContent();
+      const items=tc.items||[]; const pageText=items.map(x=>x.str).join(' ').trim(); text+=pageText+'\n';
+      // crude line grouping based on y position for better parser
+      const groups={};items.forEach(it=>{const y=Math.round((it.transform?.[5]||0)/3)*3;(groups[y]||(groups[y]=[])).push(it)});
+      Object.keys(groups).sort((a,b)=>b-a).forEach(y=>{const line=groups[y].sort((a,b)=>(a.transform?.[4]||0)-(b.transform?.[4]||0)).map(x=>x.str).join('  ');if(clean(line))matrix.push([line])});
+    }
+    if(clean(text).length<20){
+      // scanned PDF fallback OCR page by page
+      text='';
+      for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),vp=page.getViewport({scale:1.6}),cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;text+=await ocrImageLike(cv,'PDF halaman '+p)+'\n';}
+    }
+    importRawText=text; $('borImportRawText').value=text; return parseText(text);
+  }
+  async function readImage(file){const text=await ocrImageLike(file,'foto');importRawText=text;$('borImportRawText').value=text;return parseText(text)}
+  window.borReadImportFile=async function(ev){
+    const file=ev.target.files?.[0];if(!file)return;importRows=[];renderRows();status('Membuka '+file.name+'…','Progress');
+    try{
+      const ext=(file.name.split('.').pop()||'').toLowerCase();let rows=[];
+      if(['xlsx','xls','csv'].includes(ext)||/spreadsheet|excel|csv/i.test(file.type)){rows=await readExcel(file);$('borImportRawText').value='';}
+      else if(ext==='pdf'||file.type==='application/pdf')rows=await readPdf(file);
+      else if(file.type.startsWith('image/')||['jpg','jpeg','png','webp','bmp'].includes(ext))rows=await readImage(file);
+      else throw new Error('Format file belum didukung. Gunakan foto, PDF, XLS/XLSX atau CSV.');
+      importRows=applyDefaultRate(rows).filter((r,i,a)=>r.description&&a.findIndex(x=>x.description===r.description&&x.qty===r.qty&&x.rate===r.rate)===i);renderRows();
+      status(importRows.length?'Berhasil membaca '+importRows.length+' item. Periksa preview, koreksi bila perlu, lalu import.':'File terbaca tetapi item cetakan belum berhasil dikenali. Edit teks hasil baca atau tambah baris manual.',importRows.length?'Success':'Error');
+    }catch(err){console.error(err);status('Gagal membaca file: '+(err.message||err),'Error')}
+  };
+  window.borImportReparse=function(){const text=$('borImportRawText').value;importRawText=text;importRows=applyDefaultRate(parseText(text));renderRows();status(importRows.length?'Teks dibaca ulang: '+importRows.length+' item ditemukan.':'Belum ada item yang dikenali dari teks.','Success')};
+  window.borCommitSmartImport=function(){
+    try{if(typeof load==='function')load()}catch(e){}
+    const date=$('borImportDate').value,workerId=$('borImportWorker').value;const rows=importRows.filter(r=>r.use&&clean(r.description));
+    if(!date||!workerId){alert('Tanggal kerja dan pekerja wajib dipilih.');return}if(!rows.length){alert('Tidak ada item yang dicentang untuk diimport.');return}
+    const zero=rows.filter(r=>n(r.rate)<=0).length; if(zero&&!confirm(zero+' item belum memiliki Harga Satuan. Tetap import dengan harga Rp0? Anda bisa edit setelahnya.'))return;
+    if(!window.BoronganAPI?.addImportedEntries){alert('Engine Borongan belum siap. Muat ulang aplikasi lalu coba lagi.');return}
+    window.BoronganAPI.addImportedEntries(rows.map(r=>({date,workerId,description:clean(r.description),qty:n(r.qty)||1,unit:clean(r.unit)||'pcs',rate:n(r.rate)})));
+    $('borWorkDate').value=date;$('borWorkerSelect').value=workerId;window.borCloseSmartImport();
+    alert(rows.length+' item cetakan berhasil masuk ke Borongan Harian.');
+  };
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('borImportModal')?.classList.contains('open'))window.borCloseSmartImport()});
 })();
 </script>
 </body>
