@@ -198,6 +198,7 @@
 .borImportModal{position:fixed;inset:0;z-index:2000020;background:rgba(2,6,23,.72);display:none;align-items:center;justify-content:center;padding:16px}.borImportModal.open{display:flex}.borImportBox{width:min(1250px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 30px 90px rgba(0,0,0,.42)}.borImportHead{position:sticky;top:0;z-index:3;background:linear-gradient(135deg,#0f172a,#92400e);color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.borImportHead h2{margin:0;font-size:20px}.borImportHead p{margin:5px 0 0;color:#fde68a;font-size:12px}.borImportClose{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:10px;width:38px;height:38px;font-size:22px;cursor:pointer}.borImportBody{padding:16px}.borImportTop{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;align-items:end}.borImportTools,.borImportFoot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.borImportTable input[type=text],.borImportTable input[type=number]{width:100%;min-width:90px;border:1px solid #cbd5e1;border-radius:8px;padding:7px}.borImportTable input[data-field=description]{min-width:260px}.borImportTable td{vertical-align:middle}.borImportProgress{background:#fef3c7!important;color:#92400e!important}.borImportSuccess{background:#dcfce7!important;color:#047857!important}.borImportError{background:#fee2e2!important;color:#991b1b!important}@media(max-width:850px){.borImportTop{grid-template-columns:1fr 1fr}.borImportTable{min-width:900px}}@media(max-width:560px){.borImportTop{grid-template-columns:1fr}.borImportBody{padding:10px}}
 </style>
 
+<!-- PERFORMANCE OPTIMIZATION 2026-09: stable sync timestamps, lighter polling, accounting cache, snapshot summary reuse -->
 </head>
 <body>
 
@@ -875,8 +876,10 @@ function portalPrepareOwnerAliases(){
     const old=localStorage.getItem('BM_V3_BAGI_HASIL_SIMPLE_APRIL_2026_V1');
     localStorage.setItem('BM_BAGI_HASIL_SIMPLE_V1',old||JSON.stringify({shares:[{name:'Kas',percent:30},{name:'Sentot',percent:10},{name:'Aziz',percent:60}],period:'2026-04'}));
   }
-  const contract={schema:'MULIA_COMPANY_CONTRACT_V2',companyCode:'BERKAH',companyName:'CV. BERKAH MULIA ADV',storage:{sales:'BM_SALES_DB_V1',cash:'BM_KAS_BESAR_ACTIVE_DB',payroll:'BM_ABSENSI_GAJI_V4',enterprise:'BM_ENTERPRISE_V2',profit:'BM_BAGI_HASIL_SIMPLE_V1',ownerSnapshot:'BM_OWNER_SNAPSHOT_V1'},updatedAt:new Date().toISOString()};
-  localStorage.setItem('BM_COMPANY_CONTRACT_V2',JSON.stringify(contract));
+  const contractBase={schema:'MULIA_COMPANY_CONTRACT_V2',companyCode:'BERKAH',companyName:'CV. BERKAH MULIA ADV',storage:{sales:'BM_SALES_DB_V1',cash:'BM_KAS_BESAR_ACTIVE_DB',payroll:'BM_ABSENSI_GAJI_V4',enterprise:'BM_ENTERPRISE_V2',profit:'BM_BAGI_HASIL_SIMPLE_V1',ownerSnapshot:'BM_OWNER_SNAPSHOT_V1'}};
+  let contractOld=null;try{contractOld=JSON.parse(localStorage.getItem('BM_COMPANY_CONTRACT_V2')||'null')}catch(e){}
+  const contractSame=contractOld&&contractOld.schema===contractBase.schema&&contractOld.companyCode===contractBase.companyCode&&contractOld.companyName===contractBase.companyName&&JSON.stringify(contractOld.storage||{})===JSON.stringify(contractBase.storage);
+  if(!contractSame){localStorage.setItem('BM_COMPANY_CONTRACT_V2',JSON.stringify({...contractBase,updatedAt:new Date().toISOString()}));}
   localStorage.setItem('BM_COMPANY_CODE','BERKAH');
   localStorage.setItem('BM_SCHEMA_VERSION','OWNER_READER_V1');
   try{window.MuliaGroupBridge?.publish?.()}catch(e){console.warn('Owner bridge publish warning',e)}
@@ -1136,8 +1139,8 @@ async function portalWatchLocalChanges(){
 }
 function portalStartSyncWatcher(){
   if(portalSyncTimer) return;
-  portalSyncTimer=setInterval(portalWatchLocalChanges,7000);
-  portalRemoteTimer=setInterval(portalPollDriveChanges,20000);
+  portalSyncTimer=setInterval(portalWatchLocalChanges,30000);
+  portalRemoteTimer=setInterval(portalPollDriveChanges,60000);
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible' && window.PORTAL_ACCESS_TOKEN) setTimeout(portalPollDriveChanges,500);
     if(document.visibilityState==='hidden' && window.PORTAL_ACCESS_TOKEN) portalBackupNow(false);
@@ -1342,19 +1345,28 @@ function build(){
    });
  });
 
- ent.projects=projects;
- localStorage.setItem(ENT_KEY,JSON.stringify(ent));
+ const nextEnt={...ent,projects};
+ const oldEntRaw=localStorage.getItem(ENT_KEY)||'';
+ const nextEntRaw=JSON.stringify(nextEnt);
+ if(oldEntRaw!==nextEntRaw)localStorage.setItem(ENT_KEY,nextEntRaw);
+ ent=nextEnt;
 
- const master={version:4,updatedAt:new Date().toISOString(),sales,kas,hr,enterprise:ent};
- localStorage.setItem(MASTER,JSON.stringify(master));
- localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',master.updatedAt);
+ const prevMaster=j(MASTER)||{};
+ const stableMaster={version:4,sales,kas,hr,enterprise:ent};
+ const prevStable={version:Number(prevMaster.version)||4,sales:prevMaster.sales||{},kas:prevMaster.kas||{},hr:prevMaster.hr||{},enterprise:prevMaster.enterprise||{}};
+ const changed=JSON.stringify(stableMaster)!==JSON.stringify(prevStable);
+ const master=changed?{...stableMaster,updatedAt:new Date().toISOString()}:{...stableMaster,updatedAt:prevMaster.updatedAt||new Date().toISOString()};
+ if(changed||!localStorage.getItem(MASTER)){
+   localStorage.setItem(MASTER,JSON.stringify(master));
+   localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',master.updatedAt);
+ }
  return master;
 }
 function refresh(){build(); try{repaint()}catch(e){try{renderEnterprise()}catch(_){}} try{if(document.getElementById('pageOperasional')?.classList.contains('active'))renderOps()}catch(e){} }
 window.MuliaUnifiedSync={refresh,masterKey:MASTER,setProjectStatus:function(invoiceNo,status){const k=String(invoiceNo||'').toLowerCase();const p=(ent.projects||[]).find(x=>String(x.autoInvoiceKey||x.invoiceNo||x.autoKey||'').toLowerCase()===k);if(p){p.status=normalizeStatus(status,p.status);saveEnt('Status project '+invoiceNo+' → '+p.status);refresh();return true}return false}};
 ['framePenawaran','frameKas','frameAbsensi'].forEach(id=>document.getElementById(id)?.addEventListener('load',()=>setTimeout(refresh,500)));
 window.addEventListener('storage',refresh);
-setInterval(refresh,15000);
+setInterval(refresh,60000);
 setTimeout(refresh,250);
 })();
 </script>
@@ -2865,8 +2877,12 @@ function migrateOld(){
  saveData(d,false);
  return d;
 }
+let __atDataCacheRaw=null,__atDataCache=null;
 function data(){
- const d=migrateOld();
+ const raw=localStorage.getItem(KEY);
+ let d;
+ if(raw&&raw===__atDataCacheRaw&&__atDataCache){d=__atDataCache;}
+ else{d=raw?readJson(KEY,null):migrateOld();__atDataCacheRaw=localStorage.getItem(KEY);__atDataCache=d;}
  d.settings=d.settings||{};
  d.settings.activeBookYear=Number(d.settings.activeBookYear)||new Date().getFullYear();
  d.settings.pkp=d.settings.pkp||'NO';
@@ -2878,7 +2894,9 @@ function data(){
 }
 function saveData(d,signal=true){
  d.version='4.2';d.updatedAt=new Date().toISOString();
- localStorage.setItem(KEY,JSON.stringify(d));
+ const raw=JSON.stringify(d);
+ localStorage.setItem(KEY,raw);
+ __atDataCacheRaw=raw;__atDataCache=d;
  localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',d.updatedAt);
  if(signal){try{window.dispatchEvent(new CustomEvent('portalDataChanged',{detail:{reason:'accounting-tax-v4'}}))}catch(e){}}
 }
@@ -3009,7 +3027,12 @@ function sumRows(rows){
  const totalRevenue=revenue+otherRevenue,profit=totalRevenue-hpp-expense;
  return {revenue,otherRevenue,totalRevenue,hpp,expense,asset,equityIn,loanIn,ownerDraw,loanOut,liabilityOut,review,cashIn,cashOut,netCash:cashIn-cashOut,autoFiscalPositive,profit};
 }
-function yearRows(y){return MONTHS.map((m,mi)=>({mi,rows:rowsFor(y,mi),...sumRows(rowsFor(y,mi))}))}
+function periodSummary(y,mi){
+ const d=data(),snap=d.snapshots?.[periodKey(y,mi)];
+ if(snap&&snap.summary&&d.locks?.[periodKey(y,mi)])return snap.summary;
+ return sumRows(rowsFor(y,mi));
+}
+function yearRows(y){return MONTHS.map((m,mi)=>({mi,...periodSummary(y,mi)}))}
 function yearSum(y,upto=11){
  return yearRows(y).slice(0,upto+1).reduce((a,x)=>{
   Object.keys(a).forEach(k=>a[k]+=num(x[k]));return a;
