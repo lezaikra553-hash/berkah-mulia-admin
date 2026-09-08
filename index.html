@@ -419,6 +419,150 @@
   <iframe id="framePenawaran" class="appFrame" title="Penawaran Invoice"></iframe>
   <iframe id="frameKas" class="appFrame" title="Kas Besar"></iframe>
   <iframe id="frameAbsensi" class="appFrame" title="Absensi dan Slip Gaji"></iframe>
+
+<section id="pageAkuntansi" class="commandPage">
+  <div class="atHero">
+    <div><h1>Akuntansi & Pajak</h1><p>Tambahan pembukuan yang membaca ERP V3 tanpa mengubah transaksi asli. Tahun buku, snapshot periode, PPh 21, laba rugi, neraca rekonsiliasi, dan persiapan pajak.</p></div>
+    <div class="atHeroRight">CV. BERKAH MULIA ADV<small id="atVersionText">AKUNTANSI & PAJAK • ADD-ON ERP V3</small></div>
+  </div>
+
+  <div class="atToolbar noPrint">
+    <b>Periode:</b>
+    <select id="atYear" onchange="atRenderAll()"></select>
+    <select id="atMonth" onchange="atRenderAll()"></select>
+    <button class="atBtn blue" onclick="atRenderAll()">↻ Refresh</button>
+    <button class="atBtn green" onclick="atRunAudit()">✅ Audit Data</button>
+    <button class="atBtn dark" onclick="atPrintCurrent()">🖨 Cetak / PDF</button>
+    <button class="atBtn" onclick="atExportCSV()">⬇ Export CSV</button>
+    <span id="atLockStatus" class="atBadge"></span>
+    <button id="atLockBtn" class="atBtn orange" onclick="atToggleLock()">🔒 Tutup Buku</button>
+  </div>
+
+  <div id="atMetrics" class="atGrid"></div>
+
+  <div class="atTabs noPrint">
+    <button class="atTab active" data-atpane="dashboard" onclick="atOpenPane('dashboard',this)">📊 Dashboard</button>
+    <button class="atTab" data-atpane="transactions" onclick="atOpenPane('transactions',this)">🧾 Transaksi</button>
+    <button class="atTab" data-atpane="pl" onclick="atOpenPane('pl',this)">📈 Laba Rugi</button>
+    <button class="atTab" data-atpane="balance" onclick="atOpenPane('balance',this)">⚖️ Neraca</button>
+    <button class="atTab" data-atpane="pph21" onclick="atOpenPane('pph21',this)">👷 PPh 21</button>
+    <button class="atTab" data-atpane="monthlytax" onclick="atOpenPane('monthlytax',this)">🗓 Pajak Bulanan</button>
+    <button class="atTab" data-atpane="annualtax" onclick="atOpenPane('annualtax',this)">📅 Pajak Tahunan</button>
+    <button class="atTab" data-atpane="settings" onclick="atOpenPane('settings',this)">⚙️ Pengaturan</button>
+  </div>
+
+  <div id="atPane-dashboard" class="atPane active">
+    <div class="atSplit">
+      <div class="atCard"><h3>Ringkasan Pembukuan</h3><div id="atDashboardPL" class="atPL"></div></div>
+      <div class="atCard"><h3>Status Data</h3><div id="atDataStatus"></div><div id="atAuditBox" style="margin-top:10px"></div></div>
+    </div>
+    <div class="atCard"><h3>Rekap 12 Bulan</h3><div class="atTableWrap"><table class="atTable"><thead><tr><th>Bulan</th><th class="money">Omzet</th><th class="money">HPP</th><th class="money">Beban</th><th class="money">Laba/Rugi</th><th class="money">Kas Masuk</th><th class="money">Kas Keluar</th><th>Status</th></tr></thead><tbody id="atYearRows"></tbody></table></div></div>
+  </div>
+
+  <div id="atPane-transactions" class="atPane">
+    <div class="atCard">
+      <h3>Klasifikasi Transaksi</h3>
+      <div class="atNotice">Transaksi asli Kas Besar tetap <b>read-only</b>. Pengaturan akuntansi/pajak hanya disimpan di <b>BM_ACCOUNTING_TAX_V4</b> dan tidak mengubah transaksi ERP V3. Saat periode ditutup, sistem membuat snapshot agar tahun lama tidak tercampur ketika Kas Besar dipakai pada tahun berikutnya.</div><div class="atNotice" style="margin-top:8px"><b>Panduan mudah Status Biaya untuk Pajak:</b> <b>Biaya Diakui Pajak</b> = biaya usaha yang dipakai sebagai pengurang dalam perhitungan pajak. <b>Biaya Tidak Diakui Pajak</b> = tetap tercatat sebagai pengeluaran usaha, tetapi tidak dipakai sebagai pengurang pajak. <b>Masuk Aset</b> = pembelian yang dicatat sebagai aset/bukan langsung sebagai biaya. <b>Tidak Berlaku</b> = transaksi yang tidak perlu klasifikasi biaya pajak. <b>Perlu Dicek</b> = belum yakin, biarkan ini agar diperiksa lagi.</div>
+      <div class="atTableWrap" style="margin-top:10px"><table class="atTable"><thead><tr><th>No</th><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th class="money">Nominal</th><th>Kategori Akuntansi</th><th>Status Biaya untuk Pajak</th><th>Catatan</th></tr></thead><tbody id="atTransactionRows"></tbody></table></div>
+    </div>
+  </div>
+
+  <div id="atPane-pl" class="atPane">
+    <div class="atCard"><h3>Laporan Laba Rugi</h3><div id="atPLReport" class="atPL"></div></div>
+  </div>
+
+  <div id="atPane-balance" class="atPane">
+    <div class="atCard">
+      <h3>Neraca Rekonsiliasi</h3>
+      <div class="atNotice warn">Saldo awal hanya diisi sekali per tahun. Kas akhir dihitung dari <b>saldo awal kas/bank + seluruh kas masuk − seluruh kas keluar</b>. Piutang & stok otomatis memakai snapshot Kas Besar saat ini untuk tahun buku aktif; saldo lain dapat direkonsiliasi manual.</div>
+      <div class="atFieldGrid" style="margin-top:12px">
+        <div class="atField"><label>Saldo Awal Kas / Bank</label><input id="atOpenCash" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Saldo Awal Piutang</label><input id="atOpenReceivable" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Saldo Awal Persediaan</label><input id="atOpenInventory" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Saldo Awal Aset Tetap</label><input id="atOpenFixed" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Utang Usaha Akhir</label><input id="atClosePayable" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Pinjaman / Utang Lain Akhir</label><input id="atCloseLoan" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Modal Awal</label><input id="atOpenCapital" type="number" onchange="atSaveBalanceSettings()"></div>
+        <div class="atField"><label>Saldo Laba Awal</label><input id="atOpenRetained" type="number" onchange="atSaveBalanceSettings()"></div>
+      </div>
+      <div id="atBalanceReport" class="atPL" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div id="atPane-pph21" class="atPane">
+    <div class="atCard">
+      <h3>PPh 21 Otomatis — Karyawan</h3>
+      <div class="atNotice">Gaji bruto dibaca dari modul Absensi & Slip Gaji. Januari–November memakai TER bulanan; masa pajak terakhir memakai penghitungan tahunan Pasal 17. Status PTKP harus dikonfirmasi sekali per karyawan.</div>
+      <div class="atTableWrap" style="margin-top:10px"><table class="atTable"><thead><tr><th>Karyawan</th><th>NIK</th><th>PTKP</th><th>Konfirmasi</th><th class="money">Bruto Bulan</th><th>TER</th><th class="money">PPh 21</th><th>Catatan</th></tr></thead><tbody id="atPph21Rows"></tbody></table></div>
+    </div>
+    <div class="atCard">
+      <h3>PPh 21 — Pekerja Borongan / Bukan Pegawai</h3>
+      <div class="atNotice warn">Sistem membaca pembayaran dari modul Borongan dan menghitung indikasi bukan pegawai berdasarkan 50% penghasilan bruto × tarif Pasal 17. Pastikan status pekerja memang bukan pegawai sebelum digunakan untuk setor/lapor.</div>
+      <div class="atTableWrap"><table class="atTable"><thead><tr><th>Pekerja</th><th class="money">Bruto Dibayar</th><th class="money">DPP 50%</th><th class="money">PPh 21 Indikatif</th></tr></thead><tbody id="atBorPph21Rows"></tbody></table></div>
+    </div>
+  </div>
+
+  <div id="atPane-monthlytax" class="atPane">
+    <div class="atCard">
+      <h3>Pajak Bulanan</h3>
+      <div class="atNotice">PPh 21 karyawan dan borongan dihitung otomatis. PPN Keluaran dibaca dari Invoice jika status badan disetel PKP. PPN Masukan/PPh lain tetap dapat diisi karena bukti pajaknya tidak tersedia di Kas Besar.</div>
+      <div class="atFieldGrid" style="margin-top:12px">
+        <div class="atField"><label>PPh 21 Otomatis</label><input id="atPph21Auto" type="number" readonly></div>
+        <div class="atField"><label>Penyesuaian PPh 21 (+/-)</label><input id="atPph21Adjust" type="number" onchange="atSaveTaxMonth()"></div>
+        <div class="atField"><label>PPh 23 / Pajak Dipotong ke Vendor</label><input id="atPph23Payable" type="number" min="0" onchange="atSaveTaxMonth()"></div>
+        <div class="atField"><label>PPh Final / Pajak Lain Masa</label><input id="atOtherTaxPayable" type="number" min="0" onchange="atSaveTaxMonth()"></div>
+        <div class="atField"><label>PPN Keluaran Otomatis</label><input id="atVatOutAuto" type="number" readonly></div>
+        <div class="atField"><label>Override PPN Keluaran</label><input id="atVatOutOverride" type="number" min="0" onchange="atSaveTaxMonth()" placeholder="Kosong = otomatis"></div>
+        <div class="atField"><label>PPN Masukan</label><input id="atVatIn" type="number" min="0" onchange="atSaveTaxMonth()"></div>
+        <div class="atField"><label>Kompensasi PPN Sebelumnya</label><input id="atVatCarry" type="number" min="0" onchange="atSaveTaxMonth()"></div>
+      </div>
+      <div class="atFieldGrid" style="margin-top:10px">
+        <div class="atField"><label>Status PPh 21</label><select id="atPph21Status" onchange="atSaveTaxMonth()"><option>BELUM DICEK</option><option>NIHIL</option><option>SIAP LAPOR</option><option>SUDAH LAPOR</option></select></div>
+        <div class="atField"><label>Status PPN</label><select id="atVatStatus" onchange="atSaveTaxMonth()"><option>TIDAK PKP / TIDAK BERLAKU</option><option>BELUM DICEK</option><option>SIAP LAPOR</option><option>SUDAH LAPOR</option></select></div>
+        <div class="atField"><label>Tanggal Lapor</label><input id="atTaxFiledDate" type="date" onchange="atSaveTaxMonth()"></div>
+        <div class="atField"><label>NTPN / Nomor Bukti</label><input id="atTaxRef" onchange="atSaveTaxMonth()"></div>
+      </div>
+      <div id="atMonthlyTaxSummary" class="atPL" style="margin-top:15px"></div>
+    </div>
+  </div>
+
+  <div id="atPane-annualtax" class="atPane">
+    <div class="atCard">
+      <h3>Pajak Tahunan Badan</h3>
+      <div class="atNotice warn">Perhitungan ini adalah persiapan SPT. Skema pajak badan harus dipilih di Pengaturan sesuai status CV. PPh 21 karyawan <b>bukan</b> kredit PPh Badan.</div>
+      <div class="atFieldGrid" style="margin-top:12px">
+        <div class="atField"><label>Biaya yang Harus Ditambahkan Kembali (Manual)</label><input id="atFiscalPositive" type="number" min="0" onchange="atSaveAnnualTax()"></div>
+        <div class="atField"><label>Pengurang Perhitungan Pajak (Manual)</label><input id="atFiscalNegative" type="number" min="0" onchange="atSaveAnnualTax()"></div>
+        <div class="atField"><label>Kredit PPh 22</label><input id="atCredit22" type="number" min="0" onchange="atSaveAnnualTax()"></div>
+        <div class="atField"><label>Kredit PPh 23 (dipotong customer)</label><input id="atCredit23" type="number" min="0" onchange="atSaveAnnualTax()"></div>
+        <div class="atField"><label>Angsuran PPh 25</label><input id="atCredit25" type="number" min="0" onchange="atSaveAnnualTax()"></div>
+        <div class="atField"><label>Kredit Pajak Lain</label><input id="atCreditOther" type="number" min="0" onchange="atSaveAnnualTax()"></div>
+        <div class="atField"><label>Status SPT Tahunan</label><select id="atAnnualStatus" onchange="atSaveAnnualTax()"><option>BELUM DISIAPKAN</option><option>SEDANG DIREKONSILIASI</option><option>SIAP LAPOR</option><option>SUDAH LAPOR</option></select></div>
+        <div class="atField"><label>Catatan Tahunan</label><input id="atAnnualNote" onchange="atSaveAnnualTax()"></div>
+      </div>
+      <div id="atAnnualReport" class="atPL" style="margin-top:15px"></div>
+    </div>
+  </div>
+
+  <div id="atPane-settings" class="atPane">
+    <div class="atCard">
+      <h3>Pengaturan Tahun Buku & Pajak</h3>
+      <div class="atNotice warn">Tahun buku aktif menentukan transaksi Kas Besar tanpa tanggal/tahun. Sebelum mengganti tahun aktif, tutup seluruh bulan tahun lama agar snapshot tersimpan.</div>
+      <div class="atFieldGrid" style="margin-top:12px">
+        <div class="atField"><label>Tahun Buku Aktif Kas Besar</label><input id="atActiveBookYear" type="number" min="2020" max="2100" onchange="atSaveSettings()"></div>
+        <div class="atField"><label>Status PKP</label><select id="atPkp" onchange="atSaveSettings()"><option value="NO">NON-PKP</option><option value="YES">PKP</option></select></div>
+        <div class="atField"><label>Skema PPh Badan</label><select id="atCorpScheme" onchange="atSaveSettings()"><option value="NORMAL_31E">Tarif Umum + Fasilitas Pasal 31E</option><option value="FINAL_05">PPh Final 0,5% (hanya jika masih berhak)</option><option value="MANUAL">Tarif Manual</option></select></div>
+        <div class="atField"><label>Tarif Manual %</label><input id="atManualCorpRate" type="number" min="0" step="0.01" onchange="atSaveSettings()"></div>
+      </div>
+      <div class="atNotice" style="margin-top:12px">Mode PPh Final 0,5% tidak dipilih otomatis karena kelayakannya bergantung masa fasilitas/transisi badan. Default sistem memakai tarif umum + fasilitas Pasal 31E; ubah hanya setelah status CV dikonfirmasi.</div>
+    </div>
+    <div class="atCard">
+      <h3>Profil Pajak Karyawan</h3>
+      <div class="atNotice">Pilih PTKP lalu centang “Terkonfirmasi”. Pengaturan ini hanya menambah profil pajak; tidak mengubah data Absensi/Gaji.</div>
+      <div class="atTableWrap"><table class="atTable"><thead><tr><th>Karyawan</th><th>NIK</th><th>Status PTKP</th><th>Iuran Pensiun/Bulan</th><th>Terkonfirmasi</th></tr></thead><tbody id="atEmployeeProfileRows"></tbody></table></div>
+    </div>
+  </div>
+</section>
 </div>
 <script>
 const CLIENT_ID = "169606052820-5ij848mubicfdppo5b2g5qpaub67munt.apps.googleusercontent.com";
@@ -2535,5 +2679,656 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('borImportModal')?.classList.contains('open'))window.borCloseSmartImport()});
 })();
 </script>
+<!-- ===== BERKAH MULIA ERP V4 ADD-ON: AKUNTANSI & PAJAK ===== -->
+<style id="bm-accounting-tax-v1-css">
+#pageAkuntansi{display:none;min-height:100%;padding:24px 28px 40px;max-width:1600px;margin:auto}
+#pageAkuntansi.active{display:block}
+.atHero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:22px;margin-bottom:14px;background:linear-gradient(135deg,#fff,#ecfdf5);border:1px solid #a7f3d0;border-radius:20px;box-shadow:0 10px 28px rgba(15,23,42,.07)}
+.atHero h1{margin:0;font-size:30px}.atHero p{margin:7px 0 0;color:#475569;font-size:13px}.atHeroRight{text-align:right;font-weight:900}.atHeroRight small{display:block;color:#047857;margin-top:5px}
+.atToolbar,.atTabs,.atActions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.atToolbar select,.atToolbar input,.atField select,.atField input,.atField textarea,.atInlineInput{border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:#fff}
+.atBtn,.atTab{border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}.atBtn.primary,.atTab.active{background:#059669;color:#fff;border-color:#059669}.atBtn.blue{background:#2563eb;color:#fff;border-color:#2563eb}.atBtn.dark{background:#0f172a;color:#fff;border-color:#0f172a}.atBtn.red{background:#dc2626;color:#fff;border-color:#dc2626}.atBtn.green{background:#059669;color:#fff;border-color:#059669}.atBtn.orange{background:#d97706;color:#fff;border-color:#d97706}
+.atGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}.atMetric,.atCard{background:#fff;border:1px solid #e2e8f0;border-radius:17px;padding:16px;box-shadow:0 8px 22px rgba(15,23,42,.055)}.atMetric{border-left:5px solid #059669}.atMetric small{display:block;color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase}.atMetric b{display:block;font-size:24px;margin-top:6px}.atMetric em{display:block;font-size:10px;color:#94a3b8;margin-top:5px;font-style:normal}
+.atCard{margin-bottom:12px}.atCard h3{margin:0 0 12px}.atPane{display:none}.atPane.active{display:block}.atTableWrap{overflow:auto;max-height:62vh}.atTable{width:100%;border-collapse:collapse;font-size:11px;min-width:980px}.atTable th,.atTable td{padding:8px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}.atTable th{position:sticky;top:0;background:#f8fafc;z-index:1}.atTable .money{text-align:right;white-space:nowrap}.atTable select{min-width:150px;border:1px solid #cbd5e1;border-radius:8px;padding:6px;background:#fff}.atTable tr.review{background:#fffbeb}.atTable tr.locked{opacity:.72}
+.atNotice{padding:10px 12px;border-radius:11px;background:#eff6ff;color:#1e40af;font-size:11px;font-weight:800;line-height:1.55}.atNotice.warn{background:#fef3c7;color:#92400e}.atNotice.ok{background:#dcfce7;color:#047857}.atNotice.red{background:#fee2e2;color:#991b1b}
+.atPL{max-width:820px}.atPLRow{display:flex;justify-content:space-between;gap:20px;padding:8px 0;border-bottom:1px solid #e2e8f0}.atPLRow.total{font-weight:900;border-top:2px solid #0f172a;border-bottom:0;margin-top:5px}.atPLRow.sub{font-weight:900;background:#f8fafc;padding:9px}.atFieldGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.atField{display:grid;gap:5px}.atField label{font-size:10px;text-transform:uppercase;font-weight:900;color:#64748b}.atBadge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e2e8f0;font-size:10px;font-weight:900}.atBadge.ok{background:#dcfce7;color:#047857}.atBadge.warn{background:#fef3c7;color:#92400e}.atBadge.red{background:#fee2e2;color:#991b1b}.atSplit{display:grid;grid-template-columns:1.35fr 1fr;gap:12px}
+@media(max-width:1000px){.atGrid{grid-template-columns:repeat(2,1fr)}.atSplit{grid-template-columns:1fr}.atFieldGrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){#pageAkuntansi{padding:14px}.atGrid,.atFieldGrid{grid-template-columns:1fr}.atHero{flex-direction:column}.atHeroRight{text-align:left}.atHero h1{font-size:25px}}
+@media print{body.atPrint .portalTop,body.atPrint #portalLogin,body.atPrint #portalLoader,body.atPrint .atToolbar,body.atPrint .atTabs,body.atPrint .noPrint{display:none!important}body.atPrint .frameWrap{position:static!important;top:0!important;height:auto!important;overflow:visible!important}body.atPrint .commandPage{display:none!important}body.atPrint #pageAkuntansi{display:block!important;padding:5mm!important;max-width:none!important}body.atPrint .atPane{display:none!important}body.atPrint .atPane.atPrintPane{display:block!important}body.atPrint .atCard,body.atPrint .atMetric{box-shadow:none!important}.atTableWrap{max-height:none!important;overflow:visible!important}.atTable th{position:static!important}}
+</style>
+
+
+
+<script id="bm-accounting-tax-v1-js">
+(function(){
+'use strict';
+if(window.__BM_ACCOUNTING_TAX_V4__) return;
+window.__BM_ACCOUNTING_TAX_V4__=true;
+
+const KEY='BM_ACCOUNTING_TAX_V4';
+const OLD_KEYS=['BM_ACCOUNTING_TAX_V1'];
+const CASH_KEYS=['BM_V3_FRESH_KAS_ACTIVE_DB','BM_V3_FRESH_KAS_BESAR','BM_KAS_BESAR_ACTIVE_DB'];
+const HR_KEYS=['BM_V3_FRESH_ABSENSI_GAJI_V1','BM_ABSENSI_GAJI_V4','BM_ABSENSI_GAJI_V3'];
+const SALES_KEYS=['BM_V3_FRESH_SALES_DB_V1','BM_SALES_DB_V1'];
+const BOR_KEYS=['BERKAH_MULIA_BORONGAN_PAYROLL_V2','BERKAH_MULIA_BORONGAN_PAYROLL_V1'];
+const MONTHS=['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+const MONTH_LABEL=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+const CATEGORY_META={
+ 'Pendapatan Usaha':{group:'REVENUE',fiscal:'N/A'},
+ 'Pendapatan Lain':{group:'REVENUE_OTHER',fiscal:'N/A'},
+ 'Modal / Setoran Owner':{group:'EQUITY_IN',fiscal:'N/A'},
+ 'Pinjaman Masuk':{group:'LOAN_IN',fiscal:'N/A'},
+ 'HPP - Bahan Produksi':{group:'HPP',fiscal:'DEDUCTIBLE'},
+ 'HPP - Upah / Borongan':{group:'HPP',fiscal:'DEDUCTIBLE'},
+ 'Beban Gaji':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Sewa':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Transportasi':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Konsumsi':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Utilitas':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Perlengkapan':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Administrasi / Bank':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Beban Pajak Non-Kredit':{group:'EXPENSE',fiscal:'NONDEDUCTIBLE'},
+ 'Biaya Usaha Lain':{group:'EXPENSE',fiscal:'DEDUCTIBLE'},
+ 'Aset / Peralatan':{group:'ASSET',fiscal:'CAPITALIZED'},
+ 'Prive / Pengambilan Owner':{group:'OWNER_DRAW',fiscal:'N/A'},
+ 'Pembayaran Pokok Pinjaman':{group:'LOAN_OUT',fiscal:'N/A'},
+ 'Setoran Pajak Titipan':{group:'LIABILITY_OUT',fiscal:'N/A'},
+ 'Perlu Review':{group:'REVIEW',fiscal:'REVIEW'}
+};
+const CATS=Object.keys(CATEGORY_META);
+const FISCAL=['DEDUCTIBLE','NONDEDUCTIBLE','CAPITALIZED','N/A','REVIEW'];
+const FISCAL_LABEL={DEDUCTIBLE:'Biaya Diakui Pajak',NONDEDUCTIBLE:'Biaya Tidak Diakui Pajak',CAPITALIZED:'Masuk Aset / Bukan Biaya Langsung','N/A':'Tidak Berlaku','REVIEW':'Perlu Dicek'};
+const PTKP_VALUES={'TK/0':54000000,'TK/1':58500000,'TK/2':63000000,'TK/3':67500000,'K/0':58500000,'K/1':63000000,'K/2':67500000,'K/3':72000000};
+const PTKP_CAT={'TK/0':'A','TK/1':'A','K/0':'A','TK/2':'B','TK/3':'B','K/1':'B','K/2':'B','K/3':'C'};
+
+const TER={
+ A:[
+  [5400000,0],[5650000,.0025],[5950000,.005],[6300000,.0075],[6750000,.01],[7500000,.0125],[8550000,.015],[9650000,.0175],
+  [10050000,.02],[10350000,.0225],[10700000,.025],[11050000,.03],[11600000,.035],[12500000,.04],[13750000,.05],[15100000,.06],
+  [16950000,.07],[19750000,.08],[24150000,.09],[26450000,.10],[28000000,.11],[30050000,.12],[32400000,.13],[35400000,.14],
+  [39100000,.15],[43850000,.16],[47800000,.17],[51400000,.18],[56300000,.19],[62200000,.20],[68600000,.21],[77500000,.22],
+  [89000000,.23],[103000000,.24],[125000000,.25],[157000000,.26],[206000000,.27],[337000000,.28],[454000000,.29],[550000000,.30],
+  [695000000,.31],[910000000,.32],[1400000000,.33],[Infinity,.34]
+ ],
+ B:[
+  [6200000,0],[6500000,.0025],[6850000,.005],[7300000,.0075],[9200000,.01],[10750000,.015],[11250000,.02],[11600000,.025],
+  [12600000,.03],[13600000,.04],[14950000,.05],[16400000,.06],[18450000,.07],[21850000,.08],[26000000,.09],[27700000,.10],
+  [29350000,.11],[31450000,.12],[33950000,.13],[37100000,.14],[41100000,.15],[45800000,.16],[49500000,.17],[53800000,.18],
+  [58500000,.19],[64000000,.20],[71000000,.21],[80000000,.22],[93000000,.23],[109000000,.24],[129000000,.25],[163000000,.26],
+  [211000000,.27],[374000000,.28],[459000000,.29],[555000000,.30],[704000000,.31],[957000000,.32],[1405000000,.33],[Infinity,.34]
+ ],
+ C:[
+  [6600000,0],[6950000,.0025],[7350000,.005],[7800000,.0075],[8850000,.01],[9800000,.0125],[10950000,.015],[11200000,.0175],
+  [12050000,.02],[12950000,.03],[14150000,.04],[15550000,.05],[17050000,.06],[19500000,.07],[22700000,.08],[26600000,.09],
+  [28100000,.10],[30100000,.11],[32600000,.12],[35400000,.13],[38900000,.14],[43000000,.15],[47400000,.16],[51200000,.17],
+  [55800000,.18],[60400000,.19],[66700000,.20],[74500000,.21],[83200000,.22],[95600000,.23],[110000000,.24],[134000000,.25],
+  [169000000,.26],[221000000,.27],[390000000,.28],[463000000,.29],[561000000,.30],[709000000,.31],[965000000,.32],[1419000000,.33],[Infinity,.34]
+ ]
+};
+
+const el=id=>document.getElementById(id);
+const num=v=>{if(v===null||v===undefined||v==='')return 0; if(typeof v==='number')return Number.isFinite(v)?v:0; let s=String(v).replace(/Rp/gi,'').replace(/\s/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''); const n=Number(s);return Number.isFinite(n)?n:0};
+const rp=n=>{n=Math.round(num(n));return (n<0?'-Rp ':'Rp ')+Math.abs(n).toLocaleString('id-ID')};
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const clone=o=>JSON.parse(JSON.stringify(o??null));
+function readJson(k,f=null){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch(e){return f}}
+function firstData(keys,f={}){for(const k of keys){const d=readJson(k,null);if(d&&typeof d==='object')return d}return f}
+function defaultData(){
+ return {version:'4.2',settings:{activeBookYear:new Date().getFullYear(),pkp:'NO',corpScheme:'NORMAL_31E',manualCorpRate:22},
+ overrides:{},locks:{},snapshots:{},monthTax:{},annualTax:{},employeeTax:{},balance:{},audit:{},updatedAt:''};
+}
+function migrateOld(){
+ let d=readJson(KEY,null);
+ if(d)return d;
+ d=defaultData();
+ for(const k of OLD_KEYS){
+   const old=readJson(k,null);
+   if(old&&typeof old==='object'){
+     if(old.overrides)d.overrides=old.overrides;
+     if(old.locks)d.locks=old.locks;
+     if(old.monthTax)d.monthTax=old.monthTax;
+     if(old.annualTax)d.annualTax=old.annualTax;
+     break;
+   }
+ }
+ saveData(d,false);
+ return d;
+}
+function data(){
+ const d=migrateOld();
+ d.settings=d.settings||{};
+ d.settings.activeBookYear=Number(d.settings.activeBookYear)||new Date().getFullYear();
+ d.settings.pkp=d.settings.pkp||'NO';
+ d.settings.corpScheme=d.settings.corpScheme||'NORMAL_31E';
+ d.settings.manualCorpRate=num(d.settings.manualCorpRate)||22;
+ d.overrides=d.overrides||{};d.locks=d.locks||{};d.snapshots=d.snapshots||{};d.monthTax=d.monthTax||{};
+ d.annualTax=d.annualTax||{};d.employeeTax=d.employeeTax||{};d.balance=d.balance||{};d.audit=d.audit||{};
+ return d;
+}
+function saveData(d,signal=true){
+ d.version='4.2';d.updatedAt=new Date().toISOString();
+ localStorage.setItem(KEY,JSON.stringify(d));
+ localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',d.updatedAt);
+ if(signal){try{window.dispatchEvent(new CustomEvent('portalDataChanged',{detail:{reason:'accounting-tax-v4'}}))}catch(e){}}
+}
+function cash(){return firstData(CASH_KEYS,{transactions:{},receivables:[],materials:[],summary:{},summaryCalc:{}})}
+function hr(){return firstData(HR_KEYS,{period:'',employees:[],attendance:{},overtime:{},payroll:{},periodLoans:{},periodIncentives:{}})}
+function sales(){return firstData(SALES_KEYS,{quotes:[],invoices:[]})}
+function bor(){return firstData(BOR_KEYS,{workers:[],entries:[],payments:[]})}
+
+function dateText(x){return String(x?.date??x?.tanggal??x?.paymentDate??'').trim()}
+function descText(x){return String(x?.description??x?.keterangan??x?.desc??'').trim()}
+function amount(x){return num(x?.amount??x?.nominal??x?.total??x?.value)}
+function yearFromDate(s){
+ s=String(s||'').trim();
+ let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return Number(m[1]);
+ m=s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})/);if(m)return Number(m[3]);
+ m=s.match(/\b(20\d{2})\b/);if(m)return Number(m[1]);
+ return 0;
+}
+function monthFromDate(s){
+ s=String(s||'').trim().toLowerCase();
+ let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return Number(m[2])-1;
+ m=s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})/);if(m)return Number(m[2])-1;
+ const idMonths={januari:0,februari:1,maret:2,april:3,mei:4,juni:5,juli:6,agustus:7,september:8,oktober:9,november:10,desember:11};
+ for(const [k,v] of Object.entries(idMonths))if(s.includes(k))return v;
+ return -1;
+}
+function periodKey(y,mi){return String(y)+'-'+String(mi+1).padStart(2,'0')}
+function selected(){return {year:Number(el('atYear')?.value)||new Date().getFullYear(),mi:Number(el('atMonth')?.value)||0}}
+function txId(y,month,type,x,index){return [y,month,type,dateText(x),descText(x),amount(x),String(x?.source||''),String(x?.sourceKey||x?.id||index)].join('|').toLowerCase()}
+function infer(type,desc,x){
+ const s=(String(desc||'')+' '+String(x?.source||'')+' '+String(x?.category||'')).toLowerCase();
+ if(type==='pemasukan'){
+   if(/setoran owner|modal owner|modal masuk|tambahan modal/.test(s))return ['Modal / Setoran Owner','N/A'];
+   if(/pinjaman masuk|hutang masuk|utang masuk/.test(s))return ['Pinjaman Masuk','N/A'];
+   if(/refund|pengembalian biaya|pendapatan lain/.test(s))return ['Pendapatan Lain','N/A'];
+   return ['Pendapatan Usaha','N/A'];
+ }
+ if(/gaji karyawan|payroll|gaji /.test(s))return ['Beban Gaji','DEDUCTIBLE'];
+ if(/borongan|upah produksi/.test(s)||String(x?.category||'').toUpperCase()==='BORONGAN')return ['HPP - Upah / Borongan','DEDUCTIBLE'];
+ if(/kontrakan|sewa bengkel|sewa /.test(s))return ['Beban Sewa','DEDUCTIBLE'];
+ if(/bensin|grab|ongkir|parkir|tol|kirim|ekspedisi|expedisi|kurir/.test(s))return ['Beban Transportasi','DEDUCTIBLE'];
+ if(/uang makan|makan|mineral|galon|konsumsi/.test(s))return ['Beban Konsumsi','DEDUCTIBLE'];
+ if(/listrik|internet|wifi|pulsa|token/.test(s))return ['Beban Utilitas','DEDUCTIBLE'];
+ if(/prive|ambil owner|pengambilan owner|keperluan pribadi|pribadi owner/.test(s))return ['Prive / Pengambilan Owner','N/A'];
+ if(/bayar pinjaman|cicilan pinjaman|angsuran pokok|pokok pinjaman/.test(s))return ['Pembayaran Pokok Pinjaman','N/A'];
+ if(/setor pph|setoran pph|bayar pph 21|bayar pph21|ppn disetor/.test(s))return ['Setoran Pajak Titipan','N/A'];
+ if(/mesin|printer|kompresor|laptop|komputer|gerinda|alat produksi|mesin bor/.test(s) && amount(x)>=1000000)return ['Aset / Peralatan','CAPITALIZED'];
+ if(/plat|stainless|stenlis|aluminium|alumunium|akrilik|acp|film|tiner|thinner|cat|kimia|sticker|lem\b|soda api|gas\b|material|kuningan|mata bor|spon|spons|amplas|minyak tanah|ferri|feri|ss\b/.test(s))return ['HPP - Bahan Produksi','DEDUCTIBLE'];
+ if(/materai|admin|fee bank|biaya bank|fotocopy|print\b/.test(s))return ['Beban Administrasi / Bank','DEDUCTIBLE'];
+ if(/denda pajak|pajak penghasilan badan|pph badan/.test(s))return ['Beban Pajak Non-Kredit','NONDEDUCTIBLE'];
+ if(/kapas|lakban|rinso|sabun|perlengkapan|atk/.test(s))return ['Beban Perlengkapan','DEDUCTIBLE'];
+ return ['Perlu Review','REVIEW'];
+}
+function applyOverride(r){
+ const ov=data().overrides[r.id]||{};
+ r.category=ov.category||r.category;
+ r.fiscal=ov.fiscal||r.fiscal||CATEGORY_META[r.category]?.fiscal||'REVIEW';
+ r.note=ov.note||'';
+ return r;
+}
+function liveRowsForMonth(y,mi){
+ const d=data(),active=Number(d.settings.activeBookYear);
+ if(y!==active)return [];
+ const c=cash(),month=MONTHS[mi],bucket=c?.transactions?.[month]||{},out=[];
+ let ix=0;
+
+ // Kas Besar V3 menyimpan transaksi final hanya pada pemasukan + operasional.
+ // Jangan deduplikasi berdasarkan tanggal/keterangan/nominal karena transaksi produksi
+ // yang sah sering memiliki nominal dan keterangan identik (contoh bensin, kapas, uang makan).
+ const sources=[];
+ const inc=Array.isArray(bucket.pemasukan)?bucket.pemasukan:[];
+ const ops=Array.isArray(bucket.operasional)?bucket.operasional:[];
+ sources.push(['pemasukan',inc]);
+
+ // Kompatibilitas data lama: jika operasional kosong tetapi pengeluaran masih ada, baca pengeluaran.
+ if(ops.length) sources.push(['operasional',ops]);
+ else if(Array.isArray(bucket.pengeluaran)) sources.push(['operasional',bucket.pengeluaran]);
+
+ for(const [type,arr] of sources){
+   for(let index=0;index<arr.length;index++){
+     const x=arr[index]||{};
+     const explicitYear=yearFromDate(dateText(x));
+     if(explicitYear&&explicitYear!==y)continue;
+     const explicitMonth=monthFromDate(dateText(x));
+     if(explicitMonth>=0&&explicitMonth!==mi)continue;
+     const inf=infer(type,descText(x),x);
+     const r={
+       id:txId(y,month,type,x,index),
+       year:y,month,type,
+       date:dateText(x),desc:descText(x),amount:amount(x),
+       category:inf[0],fiscal:inf[1],
+       source:String(x?.source||''),
+       rawRef:String(x?.id||x?.sourceKey||index),
+       sourceIndex:index
+     };
+     out.push(applyOverride(r));
+     ix++;
+   }
+ }
+ return out;
+}
+function snapshotRows(y,mi){
+ const snap=data().snapshots[periodKey(y,mi)];
+ if(!snap||!Array.isArray(snap.rows))return null;
+ return snap.rows.map(x=>applyOverride(clone(x)));
+}
+function rowsFor(y,mi){
+ const snap=snapshotRows(y,mi);
+ return snap||liveRowsForMonth(y,mi);
+}
+function sumRows(rows){
+ let revenue=0,otherRevenue=0,hpp=0,expense=0,asset=0,equityIn=0,loanIn=0,ownerDraw=0,loanOut=0,liabilityOut=0,review=0,cashIn=0,cashOut=0,autoFiscalPositive=0;
+ for(const r of rows){
+   const meta=CATEGORY_META[r.category]||CATEGORY_META['Perlu Review'];
+   if(r.type==='pemasukan')cashIn+=r.amount; else cashOut+=r.amount;
+   if(meta.group==='REVENUE')revenue+=r.amount;
+   else if(meta.group==='REVENUE_OTHER')otherRevenue+=r.amount;
+   else if(meta.group==='HPP')hpp+=r.amount;
+   else if(meta.group==='EXPENSE'){expense+=r.amount;if(r.fiscal==='NONDEDUCTIBLE')autoFiscalPositive+=r.amount}
+   else if(meta.group==='ASSET')asset+=r.amount;
+   else if(meta.group==='EQUITY_IN')equityIn+=r.amount;
+   else if(meta.group==='LOAN_IN')loanIn+=r.amount;
+   else if(meta.group==='OWNER_DRAW')ownerDraw+=r.amount;
+   else if(meta.group==='LOAN_OUT')loanOut+=r.amount;
+   else if(meta.group==='LIABILITY_OUT')liabilityOut+=r.amount;
+   else review+=r.amount;
+ }
+ const totalRevenue=revenue+otherRevenue,profit=totalRevenue-hpp-expense;
+ return {revenue,otherRevenue,totalRevenue,hpp,expense,asset,equityIn,loanIn,ownerDraw,loanOut,liabilityOut,review,cashIn,cashOut,netCash:cashIn-cashOut,autoFiscalPositive,profit};
+}
+function yearRows(y){return MONTHS.map((m,mi)=>({mi,rows:rowsFor(y,mi),...sumRows(rowsFor(y,mi))}))}
+function yearSum(y,upto=11){
+ return yearRows(y).slice(0,upto+1).reduce((a,x)=>{
+  Object.keys(a).forEach(k=>a[k]+=num(x[k]));return a;
+ },{revenue:0,otherRevenue:0,totalRevenue:0,hpp:0,expense:0,asset:0,equityIn:0,loanIn:0,ownerDraw:0,loanOut:0,liabilityOut:0,review:0,cashIn:0,cashOut:0,netCash:0,autoFiscalPositive:0,profit:0});
+}
+function isLocked(y,mi){return !!data().locks[periodKey(y,mi)]}
+function metric(label,value,hint=''){return `<div class="atMetric"><small>${esc(label)}</small><b>${esc(value)}</b><em>${esc(hint)}</em></div>`}
+function plHtml(s){
+ return `<div class="atPLRow"><span>Omzet Usaha</span><b>${rp(s.revenue)}</b></div>
+ <div class="atPLRow"><span>Pendapatan Lain</span><b>${rp(s.otherRevenue)}</b></div>
+ <div class="atPLRow"><span>HPP</span><b>(${rp(s.hpp)})</b></div>
+ <div class="atPLRow sub"><span>Laba Kotor</span><b>${rp(s.totalRevenue-s.hpp)}</b></div>
+ <div class="atPLRow"><span>Beban Operasional</span><b>(${rp(s.expense)})</b></div>
+ <div class="atPLRow total"><span>Laba / Rugi Komersial</span><b>${rp(s.profit)}</b></div>`;
+}
+
+function terRate(cat,gross){const tbl=TER[cat]||TER.A;for(const [max,rate] of tbl)if(gross<=max)return rate;return .34}
+function tax17(pkp){
+ let x=Math.max(0,Math.floor(num(pkp)/1000)*1000),tax=0,prev=0;
+ const layers=[[60000000,.05],[250000000,.15],[500000000,.25],[5000000000,.30],[Infinity,.35]];
+ for(const [cap,rate] of layers){if(x<=prev)break;const slice=Math.min(x,cap)-prev;if(slice>0)tax+=slice*rate;prev=cap}
+ return Math.round(tax);
+}
+function ptkpStatus(id){const d=data(),p=d.employeeTax[id]||{};return p.ptkp||'TK/0'}
+function ptkpConfirmed(id){return !!(data().employeeTax[id]||{}).confirmed}
+function pensionMonthly(id){return num((data().employeeTax[id]||{}).pension)}
+function attendanceCount(st,id,period){
+ const c={H:0,A:0,IB:0,ITB:0,S:0,C:0,L:0,M:0};
+ const bucket=st?.attendance?.[id]?.[period]||{};
+ for(const v of Object.values(bucket)){
+   const status=String(v?.status||'').toUpperCase(),n=num(v?.value)||1;
+   if(Object.prototype.hasOwnProperty.call(c,status))c[status]+=n;
+ }
+ return c;
+}
+function timeMin(v){const s=String(v??'').trim().replace('.',':').replace(',',':');if(!s)return null;const p=s.split(':'),h=Number(p[0]),m=Number(p[1]||0);if(!Number.isFinite(h)||!Number.isFinite(m)||h<0||h>23||m<0||m>59)return null;return h*60+m}
+function overtimeHours(st,id,period){
+ const bucket=st?.overtime?.[id]?.[period]||{};let mins=0;
+ for(const o of Object.values(bucket)){let a=timeMin(o?.masukLembur??o?.mulai),b=timeMin(o?.pulang??o?.selesai);if(a===null||b===null)continue;a=Math.max(a,1140);if(b<a)b+=1440;mins+=Math.max(0,b-a)}
+ return Math.round(mins/60*100)/100;
+}
+function hasPayrollPeriod(st,e,period){
+ if(st?.attendance?.[e.id]?.[period]&&Object.keys(st.attendance[e.id][period]).length)return true;
+ if(st?.overtime?.[e.id]?.[period]&&Object.keys(st.overtime[e.id][period]).length)return true;
+ if(st?.payroll?.[e.id]?.[period])return true;
+ if(st?.periodIncentives?.[period]&&Object.prototype.hasOwnProperty.call(st.periodIncentives[period],e.id))return true;
+ return st?.period===period && !!(num(e.salary)||num(e.meal)||num(e.otRate)||num(e.redRate));
+}
+function employeeGross(st,e,period){
+ if(!hasPayrollPeriod(st,e,period))return null;
+ const c=attendanceCount(st,e.id,period),hours=overtimeHours(st,e.id,period);
+ const salary=num(e.salary),mealRate=num(e.meal),otRate=num(e.otRate),redRate=num(e.redRate);
+ const incentive=num(st?.periodIncentives?.[period]?.[e.id]??e.incentive);
+ const normalWorkDays=c.H+c.IB+c.ITB+c.S+c.A+c.C;
+ const mealEntitlement=mealRate*normalWorkDays,extraMeal=c.M*mealRate,otNormal=hours*otRate,otRed=c.M*redRate;
+ return Math.round(salary+mealEntitlement+extraMeal+otNormal+otRed+incentive);
+}
+
+function cashPayrollGrossByName(y,mi,name){
+ const target=String(name||'').trim().toLowerCase();
+ if(!target)return null;
+
+ // Prioritas: baca transaksi payroll mentah dari Kas Besar karena posting payroll ERP V3
+ // menyimpan amount = net dan gross = bruto. PPh 21 harus memakai bruto bila tersedia.
+ const d=data(),active=Number(d.settings.activeBookYear);
+ if(y===active){
+   const c=cash(),bucket=c?.transactions?.[MONTHS[mi]]||{};
+   const ops=Array.isArray(bucket.operasional)&&bucket.operasional.length
+     ? bucket.operasional
+     : (Array.isArray(bucket.pengeluaran)?bucket.pengeluaran:[]);
+   let rawTotal=0,rawFound=false;
+   for(const x of ops){
+     const desc=(descText(x)+' '+String(x?.employeeName||x?.name||'')+' '+String(x?.source||'')).toLowerCase();
+     const isPayroll=String(x?.source||'').toUpperCase()==='ABSENSI_PAYROLL'||/gaji karyawan|payroll|gaji /.test(desc);
+     if(!isPayroll||!desc.includes(target))continue;
+     rawTotal+=num(x?.gross??x?.bruto??x?.grossSalary??x?.amount??x?.nominal);
+     rawFound=true;
+   }
+   if(rawFound)return rawTotal;
+ }
+
+ // Kompatibilitas data lama/snapshot: jika field bruto tidak tersedia, gunakan nominal transaksi.
+ const rows=rowsFor(y,mi);
+ let total=0,found=false;
+ for(const r of rows){
+   if(r.type==='pemasukan')continue;
+   const s=String(r.desc||'').toLowerCase();
+   if(!/gaji karyawan|payroll|gaji /.test(s))continue;
+   if(s.includes(target)){total+=num(r.amount);found=true}
+ }
+ return found?total:null;
+}
+function cashBoronganGroups(y,mi){
+ const rows=rowsFor(y,mi),g={};
+ for(const r of rows){
+   if(r.type==='pemasukan')continue;
+   const s=String(r.desc||'').trim();
+   if(!/borongan/i.test(s))continue;
+   let name='Pekerja Borongan';
+   let m=s.match(/borongan\s*[-–:]\s*([^-–]+?)(?:\s*[-–]\s*(?:januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember|\d{4})|$)/i);
+   if(m&&m[1])name=m[1].trim();
+   g[name]=(g[name]||0)+num(r.amount);
+ }
+ return g;
+}
+function employeeMonthTax(st,e,y,mi){
+ const period=periodKey(y,mi);
+ let gross=employeeGross(st,e,period),sourceNote='';
+ if(gross===null){
+   gross=cashPayrollGrossByName(y,mi,e.name);
+   if(gross!==null)sourceNote=' • bruto dibaca dari Kas Besar';
+ }
+ if(gross===null)return {gross:null,rate:0,tax:0,note:'Belum ada payroll/gaji pada periode ini'};
+ const status=ptkpStatus(e.id),cat=PTKP_CAT[status]||'A';
+ if(mi<11){
+   const rate=terRate(cat,gross);
+   return {gross,rate,tax:Math.round(gross*rate),note:(ptkpConfirmed(e.id)?'TER '+cat:'ASUMSI PTKP — konfirmasi')+sourceNote};
+ }
+ let annualGross=0,months=0,priorTax=0;
+ for(let m=0;m<12;m++){
+   let g=employeeGross(st,e,periodKey(y,m));
+   if(g===null)g=cashPayrollGrossByName(y,m,e.name);
+   if(g===null)continue;
+   annualGross+=g;months++;
+   if(m<11){const r=terRate(cat,g);priorTax+=Math.round(g*r)}
+ }
+ const jobCost=Math.min(annualGross*.05,500000*months),pension=pensionMonthly(e.id)*months;
+ const taxable=Math.max(0,annualGross-jobCost-pension-(PTKP_VALUES[status]||54000000));
+ const annualTax=tax17(taxable),tax=Math.max(0,annualTax-priorTax);
+ return {gross,rate:null,tax,note:`Masa terakhir • PPh setahun ${rp(annualTax)}${sourceNote}`};
+}
+function employeeTaxSummary(y,mi){
+ const st=hr(),arr=[];let total=0,unconfirmed=0;
+ for(const e of (st.employees||[])){const r=employeeMonthTax(st,e,y,mi);if(r.gross===null)continue;if(!ptkpConfirmed(e.id))unconfirmed++;total+=r.tax;arr.push({e,...r,status:ptkpStatus(e.id)})}
+ return {rows:arr,total,unconfirmed};
+}
+function boronganMonthTax(y,mi){
+ const b=bor(),period=periodKey(y,mi),workers=new Map((b.workers||[]).map(w=>[w.id,w]));
+ const paid=(b.payments||[]).filter(p=>String(p.period||'')===period&&String(p.status||'DIBAYAR').toUpperCase()==='DIBAYAR');
+ const grouped={};
+ for(const p of paid){
+   const id=String(p.workerId||p.worker||'UNKNOWN'),gross=num(p.total??p.amount);
+   if(!gross)continue;grouped[id]=(grouped[id]||0)+gross;
+ }
+ const rows=[];let total=0;
+ if(Object.keys(grouped).length){
+   for(const [id,gross] of Object.entries(grouped)){
+     const dpp=gross*.5,tax=tax17(dpp);total+=tax;
+     rows.push({name:workers.get(id)?.name||String(id),gross,dpp,tax,source:'BORONGAN'});
+   }
+ }else{
+   const cg=cashBoronganGroups(y,mi);
+   for(const [name,gross] of Object.entries(cg)){
+     const dpp=gross*.5,tax=tax17(dpp);total+=tax;
+     rows.push({name,gross,dpp,tax,source:'KAS'});
+   }
+ }
+ return {rows,total};
+}
+function autoPph21(y,mi){const e=employeeTaxSummary(y,mi),b=boronganMonthTax(y,mi);return {employees:e,borongan:b,total:e.total+b.total}}
+
+function invoiceVatOutput(y,mi){
+ if(data().settings.pkp!=='YES')return 0;
+ const db=sales();let total=0;
+ for(const inv of (db.invoices||[])){
+   const yd=yearFromDate(inv.date)||yearFromDate(inv.savedAt),md=monthFromDate(inv.date);
+   if(yd!==y||md!==mi)continue;
+   const items=Array.isArray(inv.items)?inv.items:[],sub=items.reduce((s,x)=>s+num(x.qty)*num(x.price),0),pct=num(inv.ppnPct)||0,mode=String(inv.ppnMode||'none');
+   if(mode==='exclusive')total+=Math.round(sub*pct/100);
+   else if(mode==='inclusive')total+=Math.round(sub-(sub/(1+pct/100)));
+ }
+ return Math.round(total);
+}
+
+function receivableTotal(c){if(Array.isArray(c.receivables))return c.receivables.reduce((s,x)=>s+num(x.total??x.amount??x.nominal??x.value),0);return num(c?.summaryCalc?.piutangTotal??c?.summary?.piutang)}
+function inventoryTotal(c){if(Array.isArray(c.materials))return c.materials.reduce((s,x)=>s+num(x.total??(num(x.stock??x.qty)*num(x.price??x.harga))),0);return num(c?.summaryCalc?.stockTotal??c?.summary?.stokBahan)}
+
+window.atOpenPane=function(name,btn){
+ document.querySelectorAll('#pageAkuntansi .atPane').forEach(x=>x.classList.remove('active','atPrintPane'));
+ document.querySelectorAll('#pageAkuntansi .atTab').forEach(x=>x.classList.remove('active'));
+ el('atPane-'+name)?.classList.add('active');if(btn)btn.classList.add('active');
+ if(name==='settings')renderSettings();if(name==='pph21')renderPph21();
+};
+
+function populateSelectors(){
+ const ySel=el('atYear'),mSel=el('atMonth');if(!ySel||!mSel)return;
+ const d=data(),active=d.settings.activeBookYear,years=new Set([active,new Date().getFullYear()]);
+ Object.keys(d.snapshots||{}).forEach(k=>{const y=Number(k.slice(0,4));if(y)years.add(y)});
+ Object.keys(d.locks||{}).forEach(k=>{const y=Number(k.slice(0,4));if(y)years.add(y)});
+ const currentY=Number(ySel.value)||active,currentM=mSel.value===''?new Date().getMonth():Number(mSel.value);
+ ySel.innerHTML=[...years].sort((a,b)=>a-b).map(y=>`<option value="${y}">${y}</option>`).join('');
+ ySel.value=String([...years].includes(currentY)?currentY:active);
+ mSel.innerHTML=MONTH_LABEL.map((m,i)=>`<option value="${i}">${m}</option>`).join('');mSel.value=String(currentM);
+}
+window.atRenderAll=function(){
+ populateSelectors();const {year,mi}=selected(),rows=rowsFor(year,mi),s=sumRows(rows),lock=isLocked(year,mi),reviewCount=rows.filter(r=>(CATEGORY_META[r.category]?.group==='REVIEW'||r.fiscal==='REVIEW')).length;
+ el('atMetrics').innerHTML=[metric('Omzet',rp(s.revenue),rows.filter(r=>CATEGORY_META[r.category]?.group==='REVENUE').length+' transaksi'),metric('HPP',rp(s.hpp),'Bahan + upah'),metric('Beban',rp(s.expense),'Operasional'),metric('Laba / Rugi',rp(s.profit),MONTH_LABEL[mi]+' '+year)].join('');
+ el('atDashboardPL').innerHTML=plHtml(s);el('atPLReport').innerHTML=plHtml(s);
+ const active=data().settings.activeBookYear,snap=!!data().snapshots[periodKey(year,mi)];
+ el('atDataStatus').innerHTML=`<div class="atNotice ${rows.length?'ok':'warn'}">${rows.length?rows.length+' transaksi terbaca.':'Tidak ada transaksi untuk periode ini.'}</div>
+ <div class="atNotice ${reviewCount?'warn':'ok'}" style="margin-top:8px">${reviewCount?reviewCount+' transaksi perlu review.':'Tidak ada transaksi berstatus review.'}</div>
+ <div class="atNotice" style="margin-top:8px">Tahun buku aktif Kas: <b>${active}</b> • Sumber periode: <b>${snap?'SNAPSHOT TERTUTUP':(year===active?'LIVE KAS BESAR':'TIDAK ADA SNAPSHOT')}</b></div>`;
+ el('atLockStatus').textContent=lock?'🔒 Periode Ditutup':'🔓 Periode Terbuka';el('atLockStatus').className='atBadge '+(lock?'ok':'warn');el('atLockBtn').textContent=lock?'🔓 Buka Periode':'🔒 Tutup Buku';
+ renderTransactions(rows,lock);renderYear(year);renderBalance(year,mi);renderPph21();loadTaxMonth(year,mi);renderAnnual(year);renderSettings();
+};
+function renderTransactions(rows,lock){
+ const tb=el('atTransactionRows');if(!tb)return;
+ if(!rows.length){tb.innerHTML='<tr><td colspan="8" class="emptyState">Belum ada transaksi.</td></tr>';return}
+ tb.innerHTML=rows.map((r,i)=>`<tr class="${r.fiscal==='REVIEW'?'review ':''}${lock?'locked':''}">
+ <td>${i+1}</td><td>${esc(r.date||'-')}</td><td>${esc(r.type)}</td><td>${esc(r.desc||'-')}</td><td class="money">${rp(r.amount)}</td>
+ <td><select ${lock?'disabled':''} onchange="atOverride('${encodeURIComponent(r.id)}','category',this.value)">${CATS.map(c=>`<option ${c===r.category?'selected':''}>${esc(c)}</option>`).join('')}</select></td>
+ <td><select ${lock?'disabled':''} onchange="atOverride('${encodeURIComponent(r.id)}','fiscal',this.value)">${FISCAL.map(c=>`<option value="${c}" ${c===r.fiscal?'selected':''}>${FISCAL_LABEL[c]||c}</option>`).join('')}</select></td>
+ <td><input class="atInlineInput" ${lock?'disabled':''} value="${esc(r.note||'')}" onchange="atOverride('${encodeURIComponent(r.id)}','note',this.value)" placeholder="Opsional"></td></tr>`).join('');
+}
+window.atOverride=function(encoded,field,value){
+ const {year,mi}=selected();if(isLocked(year,mi))return alert('Periode sudah ditutup. Buka periode dahulu.');
+ const id=decodeURIComponent(encoded),d=data();d.overrides[id]=d.overrides[id]||{};d.overrides[id][field]=value;
+ if(field==='category'&&!d.overrides[id].fiscal)d.overrides[id].fiscal=CATEGORY_META[value]?.fiscal||'REVIEW';
+ saveData(d);atRenderAll();
+};
+function renderYear(y){
+ const d=data(),tb=el('atYearRows');if(!tb)return;
+ tb.innerHTML=yearRows(y).map(x=>`<tr><td>${MONTH_LABEL[x.mi]}</td><td class="money">${rp(x.revenue)}</td><td class="money">${rp(x.hpp)}</td><td class="money">${rp(x.expense)}</td><td class="money"><b>${rp(x.profit)}</b></td><td class="money">${rp(x.cashIn)}</td><td class="money">${rp(x.cashOut)}</td><td>${d.locks[periodKey(y,x.mi)]?'<span class="atBadge ok">DITUTUP</span>':'<span class="atBadge warn">TERBUKA</span>'}</td></tr>`).join('');
+}
+window.atToggleLock=function(){
+ const {year,mi}=selected(),k=periodKey(year,mi),d=data();
+ if(d.locks[k]){
+   if(!confirm('Buka kembali periode '+MONTH_LABEL[mi]+' '+year+'?'))return;
+   delete d.locks[k];
+   if(year===d.settings.activeBookYear)delete d.snapshots[k];
+ }else{
+   const rows=rowsFor(year,mi);
+   if(!rows.length)return alert('Tidak ada transaksi untuk ditutup.');
+   const review=rows.filter(r=>CATEGORY_META[r.category]?.group==='REVIEW'||r.fiscal==='REVIEW').length;
+   if(review&& !confirm(review+' transaksi masih perlu review. Tetap tutup periode?'))return;
+   if(!confirm('Tutup buku '+MONTH_LABEL[mi]+' '+year+'? Snapshot transaksi akan disimpan dan klasifikasi dikunci.'))return;
+   d.snapshots[k]={rows:clone(rows),closedAt:new Date().toISOString(),sourceYear:d.settings.activeBookYear,summary:sumRows(rows)};
+   d.locks[k]={lockedAt:new Date().toISOString()};
+ }
+ saveData(d);atRenderAll();
+};
+
+function balanceCfg(y){const d=data();d.balance[y]=d.balance[y]||{openCash:0,openReceivable:0,openInventory:0,openFixed:0,closePayable:0,closeLoan:0,openCapital:0,openRetained:0};return d.balance[y]}
+function renderBalance(y,mi){
+ const d=data(),cfg=balanceCfg(y),ys=yearSum(y,mi),active=y===d.settings.activeBookYear,c=cash();
+ const cashEnd=num(cfg.openCash)+ys.cashIn-ys.cashOut;
+ const receivable=active?receivableTotal(c):num(cfg.openReceivable);
+ const inventory=active?inventoryTotal(c):num(cfg.openInventory);
+ const fixed=num(cfg.openFixed)+ys.asset;
+ const payable=num(cfg.closePayable),loans=Math.max(0,num(cfg.closeLoan)+ys.loanIn-ys.loanOut);
+ const equity=num(cfg.openCapital)+ys.equityIn+num(cfg.openRetained)+ys.profit-ys.ownerDraw;
+ const assets=cashEnd+receivable+inventory+fixed,liabEq=payable+loans+equity,diff=assets-liabEq;
+ const status=Math.abs(diff)<1000?'<span class="atBadge ok">BALANCE</span>':'<span class="atBadge red">BELUM BALANCE</span>';
+ el('atBalanceReport').innerHTML=`<div class="atPLRow"><span>Kas / Bank Akhir</span><b>${rp(cashEnd)}</b></div>
+ <div class="atPLRow"><span>Piutang Usaha ${active?'(snapshot Kas sekarang)':'(saldo awal/arsip)'}</span><b>${rp(receivable)}</b></div>
+ <div class="atPLRow"><span>Persediaan ${active?'(snapshot Kas sekarang)':'(saldo awal/arsip)'}</span><b>${rp(inventory)}</b></div>
+ <div class="atPLRow"><span>Aset Tetap (awal + pembelian aset)</span><b>${rp(fixed)}</b></div>
+ <div class="atPLRow sub"><span>Total Aset</span><b>${rp(assets)}</b></div>
+ <div class="atPLRow"><span>Utang Usaha</span><b>${rp(payable)}</b></div><div class="atPLRow"><span>Pinjaman / Utang Lain</span><b>${rp(loans)}</b></div>
+ <div class="atPLRow"><span>Modal + Saldo Laba + Laba Berjalan - Prive</span><b>${rp(equity)}</b></div>
+ <div class="atPLRow total"><span>Selisih Neraca ${status}</span><b>${rp(diff)}</b></div>`;
+ [['atOpenCash','openCash'],['atOpenReceivable','openReceivable'],['atOpenInventory','openInventory'],['atOpenFixed','openFixed'],['atClosePayable','closePayable'],['atCloseLoan','closeLoan'],['atOpenCapital','openCapital'],['atOpenRetained','openRetained']].forEach(([id,k])=>{if(el(id))el(id).value=num(cfg[k])||''});
+}
+window.atSaveBalanceSettings=function(){
+ const {year}=selected(),d=data();d.balance[year]={
+  openCash:num(el('atOpenCash').value),openReceivable:num(el('atOpenReceivable').value),openInventory:num(el('atOpenInventory').value),openFixed:num(el('atOpenFixed').value),
+  closePayable:num(el('atClosePayable').value),closeLoan:num(el('atCloseLoan').value),openCapital:num(el('atOpenCapital').value),openRetained:num(el('atOpenRetained').value)
+ };saveData(d);renderBalance(year,selected().mi);
+};
+
+function renderPph21(){
+ const tb=el('atPph21Rows'),bt=el('atBorPph21Rows');if(!tb||!bt)return;
+ const {year,mi}=selected(),sum=employeeTaxSummary(year,mi),st=hr();
+ if(!sum.rows.length)tb.innerHTML='<tr><td colspan="8">Tidak ada payroll pada periode ini.</td></tr>';
+ else tb.innerHTML=sum.rows.map(r=>`<tr><td>${esc(r.e.name||'-')}</td><td>${esc(r.e.nik||'-')}</td><td>${esc(r.status)}</td><td>${ptkpConfirmed(r.e.id)?'<span class="atBadge ok">YA</span>':'<span class="atBadge warn">BELUM</span>'}</td><td class="money">${rp(r.gross)}</td><td>${r.rate===null?'Tahunan':(r.rate*100).toLocaleString('id-ID',{maximumFractionDigits:2})+'%'}</td><td class="money"><b>${rp(r.tax)}</b></td><td>${esc(r.note)}</td></tr>`).join('');
+ const b=boronganMonthTax(year,mi);bt.innerHTML=b.rows.length?b.rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="money">${rp(r.gross)}</td><td class="money">${rp(r.dpp)}</td><td class="money"><b>${rp(r.tax)}</b></td></tr>`).join(''):'<tr><td colspan="4">Tidak ada pembayaran borongan periode ini.</td></tr>';
+}
+function renderEmployeeProfiles(){
+ const tb=el('atEmployeeProfileRows');if(!tb)return;const st=hr(),d=data();
+ tb.innerHTML=(st.employees||[]).length?(st.employees||[]).map(e=>{const p=d.employeeTax[e.id]||{ptkp:'TK/0',pension:0,confirmed:false};return `<tr><td>${esc(e.name||'-')}</td><td>${esc(e.nik||'-')}</td><td><select onchange="atEmpTax('${encodeURIComponent(e.id)}','ptkp',this.value)">${Object.keys(PTKP_VALUES).map(s=>`<option ${s===(p.ptkp||'TK/0')?'selected':''}>${s}</option>`).join('')}</select></td><td><input type="number" min="0" value="${num(p.pension)||''}" onchange="atEmpTax('${encodeURIComponent(e.id)}','pension',this.value)"></td><td><input type="checkbox" ${p.confirmed?'checked':''} onchange="atEmpTax('${encodeURIComponent(e.id)}','confirmed',this.checked)"></td></tr>`}).join(''):'<tr><td colspan="5">Belum ada karyawan di modul Absensi.</td></tr>';
+}
+window.atEmpTax=function(id,field,value){id=decodeURIComponent(id);const d=data();d.employeeTax[id]=d.employeeTax[id]||{ptkp:'TK/0',pension:0,confirmed:false};d.employeeTax[id][field]=field==='pension'?num(value):value;saveData(d);renderPph21();renderEmployeeProfiles();loadTaxMonth(selected().year,selected().mi)};
+
+function loadTaxMonth(y,mi){
+ const d=data(),k=periodKey(y,mi),t=d.monthTax[k]||{},auto=autoPph21(y,mi),vatAuto=invoiceVatOutput(y,mi);
+ const set=(id,v)=>{if(el(id))el(id).value=v};
+ set('atPph21Auto',Math.round(auto.total));set('atPph21Adjust',num(t.pph21Adjust)||'');set('atPph23Payable',num(t.pph23Payable)||'');set('atOtherTaxPayable',num(t.otherTaxPayable)||'');
+ set('atVatOutAuto',vatAuto);set('atVatOutOverride',t.vatOutOverride===null||t.vatOutOverride===undefined?'':num(t.vatOutOverride));set('atVatIn',num(t.vatIn)||'');set('atVatCarry',num(t.vatCarry)||'');
+ if(el('atPph21Status'))el('atPph21Status').value=t.pph21Status||'BELUM DICEK';
+ if(el('atVatStatus'))el('atVatStatus').value=t.vatStatus||(d.settings.pkp==='YES'?'BELUM DICEK':'TIDAK PKP / TIDAK BERLAKU');
+ set('atTaxFiledDate',t.filedDate||'');set('atTaxRef',t.ref||'');
+ const pph21=Math.max(0,auto.total+num(t.pph21Adjust)),vatOut=(t.vatOutOverride===null||t.vatOutOverride===undefined||t.vatOutOverride==='')?vatAuto:num(t.vatOutOverride),netVat=Math.max(0,vatOut-num(t.vatIn)-num(t.vatCarry));
+ const total=pph21+num(t.pph23Payable)+num(t.otherTaxPayable)+netVat;
+ el('atMonthlyTaxSummary').innerHTML=`<div class="atPLRow"><span>PPh 21 Karyawan Otomatis</span><b>${rp(auto.employees.total)}</b></div><div class="atPLRow"><span>PPh 21 Borongan Indikatif</span><b>${rp(auto.borongan.total)}</b></div><div class="atPLRow"><span>PPh 21 Setelah Penyesuaian</span><b>${rp(pph21)}</b></div><div class="atPLRow"><span>PPh 23 / Pajak Vendor</span><b>${rp(t.pph23Payable)}</b></div><div class="atPLRow"><span>PPN Kurang Bayar</span><b>${rp(netVat)}</b></div><div class="atPLRow total"><span>Total Kewajiban Masa Tercatat</span><b>${rp(total)}</b></div>${auto.employees.unconfirmed?`<div class="atNotice warn" style="margin-top:8px">${auto.employees.unconfirmed} karyawan belum mengonfirmasi status PTKP.</div>`:''}`;
+}
+window.atSaveTaxMonth=function(){
+ const {year,mi}=selected(),d=data(),k=periodKey(year,mi),rawOverride=el('atVatOutOverride').value;
+ d.monthTax[k]={pph21Adjust:num(el('atPph21Adjust').value),pph23Payable:num(el('atPph23Payable').value),otherTaxPayable:num(el('atOtherTaxPayable').value),vatOutOverride:rawOverride===''?null:num(rawOverride),vatIn:num(el('atVatIn').value),vatCarry:num(el('atVatCarry').value),pph21Status:el('atPph21Status').value,vatStatus:el('atVatStatus').value,filedDate:el('atTaxFiledDate').value,ref:el('atTaxRef').value,updatedAt:new Date().toISOString()};
+ saveData(d);loadTaxMonth(year,mi);
+};
+
+function corpTaxNormal31E(revenue,fiscalProfit){
+ const pkp=Math.max(0,Math.floor(num(fiscalProfit)/1000)*1000),omzet=Math.max(0,num(revenue));
+ if(!pkp)return {tax:0,detail:'PKP nihil'};
+ if(omzet<=4800000000)return {tax:Math.round(pkp*.11),detail:'Fasilitas Pasal 31E: 11% atas PKP'};
+ if(omzet<=50000000000){const facilityPkp=pkp*(4800000000/omzet),tax=facilityPkp*.11+(pkp-facilityPkp)*.22;return {tax:Math.round(tax),detail:'Pasal 31E proporsional: bagian omzet s.d. Rp4,8 M mendapat tarif 11%, sisanya 22%'};
+ }
+ return {tax:Math.round(pkp*.22),detail:'Tarif umum 22%'};
+}
+function renderAnnual(y){
+ const d=data(),a=d.annualTax[y]||{},ys=yearSum(y,11),autoPos=ys.autoFiscalPositive,manualPos=num(a.positive),manualNeg=num(a.negative),fiscal=ys.profit+autoPos+manualPos-manualNeg;
+ let calc={tax:0,detail:''},scheme=d.settings.corpScheme;
+ if(scheme==='FINAL_05')calc={tax:Math.round(Math.max(0,ys.revenue)*.005),detail:'PPh Final 0,5% dari omzet — hanya jika badan masih berhak'};
+ else if(scheme==='MANUAL')calc={tax:Math.round(Math.max(0,fiscal)*num(d.settings.manualCorpRate)/100),detail:'Tarif manual '+num(d.settings.manualCorpRate)+'%'};
+ else calc=corpTaxNormal31E(ys.revenue,fiscal);
+ const credits=num(a.credit22)+num(a.credit23)+num(a.credit25)+num(a.creditOther),payable=scheme==='FINAL_05'?calc.tax:Math.max(0,calc.tax-credits);
+ const set=(id,v)=>{if(el(id))el(id).value=v};
+ set('atFiscalPositive',manualPos||'');set('atFiscalNegative',manualNeg||'');set('atCredit22',num(a.credit22)||'');set('atCredit23',num(a.credit23)||'');set('atCredit25',num(a.credit25)||'');set('atCreditOther',num(a.creditOther)||'');if(el('atAnnualStatus'))el('atAnnualStatus').value=a.status||'BELUM DISIAPKAN';set('atAnnualNote',a.note||'');
+ el('atAnnualReport').innerHTML=`<div class="atPLRow"><span>Omzet Setahun</span><b>${rp(ys.revenue)}</b></div><div class="atPLRow"><span>HPP</span><b>(${rp(ys.hpp)})</b></div><div class="atPLRow"><span>Beban Komersial</span><b>(${rp(ys.expense)})</b></div><div class="atPLRow sub"><span>Laba/Rugi Komersial</span><b>${rp(ys.profit)}</b></div><div class="atPLRow"><span>Biaya Tidak Diakui Pajak (otomatis)</span><b>${rp(autoPos)}</b></div><div class="atPLRow"><span>Biaya Ditambahkan Kembali (manual)</span><b>${rp(manualPos)}</b></div><div class="atPLRow"><span>Pengurang Perhitungan Pajak (manual)</span><b>(${rp(manualNeg)})</b></div><div class="atPLRow sub"><span>Laba untuk Dasar Perhitungan Pajak</span><b>${rp(fiscal)}</b></div><div class="atPLRow"><span>Estimasi PPh Badan</span><b>${rp(calc.tax)}</b></div><div class="atNotice" style="margin:8px 0">${esc(calc.detail)}</div><div class="atPLRow"><span>Kredit PPh Badan (22/23/25/lain)</span><b>(${rp(credits)})</b></div><div class="atPLRow total"><span>${scheme==='FINAL_05'?'PPh Final Setahun (sebelum cek setoran masa)':'Estimasi PPh Kurang Bayar'}</span><b>${rp(payable)}</b></div><div class="atNotice warn" style="margin-top:8px">PPh 21 karyawan tidak dimasukkan sebagai kredit PPh Badan.</div>`;
+}
+window.atSaveAnnualTax=function(){const {year}=selected(),d=data();d.annualTax[year]={positive:num(el('atFiscalPositive').value),negative:num(el('atFiscalNegative').value),credit22:num(el('atCredit22').value),credit23:num(el('atCredit23').value),credit25:num(el('atCredit25').value),creditOther:num(el('atCreditOther').value),status:el('atAnnualStatus').value,note:el('atAnnualNote').value,updatedAt:new Date().toISOString()};saveData(d);renderAnnual(year)};
+
+function renderSettings(){
+ const d=data();if(!el('atActiveBookYear'))return;
+ el('atActiveBookYear').value=d.settings.activeBookYear;el('atPkp').value=d.settings.pkp;el('atCorpScheme').value=d.settings.corpScheme;el('atManualCorpRate').value=num(d.settings.manualCorpRate)||22;renderEmployeeProfiles();
+}
+window.atSaveSettings=function(){
+ const d=data(),old=d.settings.activeBookYear,next=Number(el('atActiveBookYear').value)||old;
+ if(next!==old){
+   const unlocked=MONTHS.map((m,i)=>periodKey(old,i)).filter(k=>!d.locks[k]&&rowsFor(old,Number(k.slice(5,7))-1).length);
+   if(unlocked.length&&!confirm('Masih ada '+unlocked.length+' bulan tahun '+old+' yang belum ditutup. Mengganti tahun aktif dapat membuat transaksi tanpa tanggal/tahun dianggap tahun baru. Tetap lanjut?')){el('atActiveBookYear').value=old;return}
+ }
+ d.settings.activeBookYear=next;d.settings.pkp=el('atPkp').value;d.settings.corpScheme=el('atCorpScheme').value;d.settings.manualCorpRate=num(el('atManualCorpRate').value)||22;saveData(d);atRenderAll();
+};
+
+function runAuditInternal(){
+ const {year,mi}=selected(),d=data(),rows=rowsFor(year,mi),s=sumRows(rows),checks=[];
+ const add=(ok,label,detail,level='FAIL')=>checks.push({ok,label,detail,level});
+ add(!!rows.length,'Transaksi periode',rows.length?rows.length+' transaksi terbaca':'Tidak ada transaksi',rows.length?'OK':'WARN');
+ const dup=rows.length-new Set(rows.map(r=>r.id)).size;add(dup===0,'ID transaksi unik',dup?dup+' duplikat':'Tidak ada duplikat');
+ const review=rows.filter(r=>CATEGORY_META[r.category]?.group==='REVIEW'||r.fiscal==='REVIEW').length;add(review===0,'Klasifikasi transaksi',review?review+' perlu review':'Semua terklasifikasi',review?'WARN':'OK');
+ const rawIn=rows.filter(r=>r.type==='pemasukan').reduce((a,r)=>a+r.amount,0),rawOut=rows.filter(r=>r.type!=='pemasukan').reduce((a,r)=>a+r.amount,0);
+ add(Math.abs(rawIn-s.cashIn)<1&&Math.abs(rawOut-s.cashOut)<1,'Kontrol kas','Kas masuk/keluar sesuai sumber transaksi');
+ if(year===Number(d.settings.activeBookYear)){
+   const c=cash(),bucket=c?.transactions?.[MONTHS[mi]]||{};
+   const srcIn=(bucket.pemasukan||[]).reduce((a,x)=>a+amount(x),0);
+   const srcOut=((bucket.operasional||[]).length?(bucket.operasional||[]):(bucket.pengeluaran||[])).reduce((a,x)=>a+amount(x),0);
+   add(Math.abs(srcIn-s.cashIn)<1&&Math.abs(srcOut-s.cashOut)<1,'Cocok dengan Kas Besar',`Sumber: masuk ${rp(srcIn)} / keluar ${rp(srcOut)} • Akuntansi: masuk ${rp(s.cashIn)} / keluar ${rp(s.cashOut)}`,Math.abs(srcIn-s.cashIn)<1&&Math.abs(srcOut-s.cashOut)<1?'OK':'FAIL');
+ }
+ const emp=employeeTaxSummary(year,mi);add(emp.unconfirmed===0,'Status PTKP karyawan',emp.unconfirmed?emp.unconfirmed+' belum dikonfirmasi':'Semua payroll aktif terkonfirmasi',emp.unconfirmed?'WARN':'OK');
+ if(d.settings.pkp==='YES')add(true,'Status PKP','PPN Keluaran dibaca dari Invoice');
+ else add(true,'Status PKP','NON-PKP — PPN otomatis tidak dihitung');
+ add(!!d.settings.corpScheme,'Skema PPh Badan',d.settings.corpScheme||'Belum dipilih',d.settings.corpScheme?'OK':'WARN');
+ if(isLocked(year,mi))add(!!d.snapshots[periodKey(year,mi)],'Snapshot periode','Periode tertutup memiliki snapshot');
+ return checks;
+}
+window.atRunAudit=function(){
+ const checks=runAuditInternal(),fail=checks.filter(x=>!x.ok&&x.level==='FAIL').length,warn=checks.filter(x=>!x.ok&&x.level==='WARN').length;
+ el('atAuditBox').innerHTML=`<div class="atNotice ${fail?'red':warn?'warn':'ok'}"><b>Audit: ${fail?'ADA ERROR':warn?'ADA PERINGATAN':'LULUS'}</b><br>${checks.map(x=>`${x.ok?'✅':x.level==='WARN'?'⚠️':'❌'} ${esc(x.label)} — ${esc(x.detail)}`).join('<br>')}</div>`;
+ const d=data();d.audit[periodKey(selected().year,selected().mi)]={at:new Date().toISOString(),fail,warn};saveData(d,false);
+ return {fail,warn,checks};
+};
+
+window.atExportCSV=function(){
+ const {year,mi}=selected(),rows=rowsFor(year,mi),lines=[['Tahun','Bulan','Tanggal','Jenis','Keterangan','Nominal','Kategori Akuntansi','Fiskal','Catatan'],...rows.map(r=>[year,MONTH_LABEL[mi],r.date,r.type,r.desc,r.amount,r.category,r.fiscal,r.note])];
+ const csv=lines.map(a=>a.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n'),blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Berkah_Mulia_Akuntansi_'+periodKey(year,mi)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+window.atPrintCurrent=function(){const active=document.querySelector('#pageAkuntansi .atPane.active');if(!active)return;active.classList.add('atPrintPane');document.body.classList.add('atPrint');setTimeout(()=>window.print(),50);setTimeout(()=>{document.body.classList.remove('atPrint');active.classList.remove('atPrintPane')},800)};
+
+function install(){
+ if(!document.getElementById('btnAkuntansi')){const b=document.createElement('button');b.id='btnAkuntansi';b.className='tabBtn';b.textContent='🧾 Akuntansi & Pajak';b.onclick=()=>window.openApp('akuntansi');document.getElementById('btnBagiHasil')?.insertAdjacentElement('afterend',b)}
+ const old=window.openApp;
+ if(old&&!old.__atV4Wrapped){
+   const wrapped=function(app){
+    if(app==='akuntansi'){
+      document.querySelectorAll('.commandPage,.appFrame').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tabBtn').forEach(x=>x.classList.remove('active'));
+      el('pageAkuntansi')?.classList.add('active');el('btnAkuntansi')?.classList.add('active');sessionStorage.setItem('BM_V3_PORTAL_LAST_APP','akuntansi');window.atRenderAll();return;
+    }
+    return old(app);
+   };wrapped.__atV4Wrapped=true;window.openApp=wrapped;
+ }
+ setTimeout(()=>{if(sessionStorage.getItem('BM_V3_PORTAL_LAST_APP')==='akuntansi')window.openApp('akuntansi')},80);
+}
+document.addEventListener('DOMContentLoaded',install);
+if(document.readyState!=='loading')install();
+window.addEventListener('storage',e=>{if([...CASH_KEYS,...HR_KEYS,...SALES_KEYS,...BOR_KEYS,KEY].includes(e.key))setTimeout(()=>window.atRenderAll?.(),100)});
+window.addEventListener('portalDataChanged',()=>setTimeout(()=>window.atRenderAll?.(),100));
+})();
+</script>
+<!-- ===== END BERKAH MULIA ERP V4 ADD-ON ===== -->
+
 </body>
 </html>
