@@ -222,11 +222,11 @@
   <button id="btnBagiHasil" class="tabBtn" onclick="openApp('bagihasil')">🤝 Bagi Hasil</button>
   <button id="btnPostPayroll" class="topBtn green" onclick="portalPostPayrollToKas()">💵 Catat Payroll ke Kas</button>
   <button class="topBtn green" onclick="loginGooglePortal()">🔐 Login Google</button>
-  <button class="topBtn green" onclick="portalManualSync()">☁ Sinkronkan</button>
+  <button class="topBtn green" onclick="portalManualSync()">☁ Sync Sekarang</button>
   <button class="topBtn" onclick="portalManualRestore()">↩ Restore Drive</button>
   <button class="topBtn" onclick="openMigrationWizard()">🔀 Migrasi Data</button>
   <button class="topBtn red" onclick="portalLogout()">Keluar</button>
-  <span class="driveMini"><span id="portalDot" class="dot"></span><span id="portalGoogleStatus">Google belum login</span></span>
+  <span class="driveMini"><span id="portalDot" class="dot"></span><span id="portalGoogleStatus">Login Google untuk Auto Sync</span></span>
 </div>
 <div id="portalLoader"><div class="loaderBox"><span class="loaderSpin"></span>Memuat ERP Berkah Mulia…</div></div>
 <div class="frameWrap">
@@ -622,7 +622,7 @@ function loginGooglePortal(options={}){
       }
       sessionStorage.setItem('PORTAL_GOOGLE_EMAIL',window.PORTAL_GOOGLE_EMAIL||ALLOWED_EMAIL);
       updatePortalGoogleUi();
-      if(!silent) alert('Login Google portal berhasil: '+(window.PORTAL_GOOGLE_EMAIL||ALLOWED_EMAIL));
+      if(!silent) alert('Login Google berhasil: '+(window.PORTAL_GOOGLE_EMAIL||ALLOWED_EMAIL)+'\nAuto Sync Google Drive aktif.');
       setTimeout(portalSmartSyncAfterLogin,500);
       resolve(window.PORTAL_ACCESS_TOKEN);
     }});
@@ -665,12 +665,15 @@ function openApp(app){
    Tujuan:
    1) 1 login Google untuk semua modul.
    2) Data Penawaran/Invoice, Kas Besar, dan Absensi tersimpan terpisah.
-   3) Saat buka di HP/laptop lain, klik Login Google lalu Restore/Sinkronkan.
-   4) Auto backup ke Google Drive saat data lokal berubah.
+   3) Saat buka di PC/HP/laptop lain, cukup Login Google yang diizinkan.
+   4) Setelah Login Google: otomatis ambil data Drive yang lebih baru.
+   5) Perubahan lokal otomatis dikirim ke Drive; perangkat lain otomatis mengecek Drive.
+   6) Tombol Sinkronkan/Restore tetap tersedia sebagai kontrol darurat.
    ========================================================== */
 const PORTAL_SYNC_FILE = 'berkah_mulia_portal_v3_sync_latest.json';
 const PORTAL_SYNC_VERSION = 'SYNC_V5_BERKAH_OWNER_READY_2026_07';
 let portalSyncTimer = null;
+let portalRemoteTimer = null;
 let portalUploadTimer = null;
 let portalLastHash = '';
 let portalSyncBusy = false;
@@ -970,6 +973,33 @@ async function portalBackupNow(show=true){
     if(!window.PORTAL_ACCESS_TOKEN) throw new Error('Silakan Login Google dulu.');
     const data=portalCollectStorage();
     const h=await portalHashSnapshot(data);
+    let localAt=Date.parse(localStorage.getItem('PORTAL_SYNC_LOCAL_UPDATED_AT') || localStorage.getItem('BM_V3_KAS_LAST_SAVED_AT') || 0) || 0;
+    const file=await portalFindSyncFile();
+
+    // Pengaman: sebelum upload, selalu cek apakah Drive sudah berubah dari perangkat lain.
+    if(file){
+      const remote=await portalDownloadSyncFile(file.id);
+      const remoteAt=Date.parse(remote.portalSyncAt || file.modifiedTime || 0) || 0;
+      const remoteHash=remote.hash || (remote.storage ? await portalHashSnapshot(remote.storage) : '');
+      if(remoteHash && remoteHash===h){
+        localStorage.setItem('PORTAL_SYNC_LAST_HASH',h);
+        localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT', remote.portalSyncAt || file.modifiedTime || new Date().toISOString());
+        portalLastHash=h;
+        portalSetStatus('Google Drive • data sama', true);
+        if(show) alert('Data sudah sama dengan Google Drive.');
+        return;
+      }
+      if(remoteAt > localAt + 1500){
+        portalApplyStorage(remote.storage||{});
+        portalLastHash=remoteHash;
+        localStorage.setItem('PORTAL_SYNC_LAST_HASH',remoteHash);
+        localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',remote.portalSyncAt || file.modifiedTime || new Date().toISOString());
+        portalSetStatus('Drive lebih baru • otomatis diambil', true);
+        if(show) alert('Google Drive memiliki data yang lebih baru. Data terbaru otomatis diambil agar perangkat ini tidak menimpa Drive.');
+        return;
+      }
+    }
+
     const payload={
       version:PORTAL_SYNC_VERSION,
       companyCode:'BERKAH',
@@ -983,17 +1013,16 @@ async function portalBackupNow(show=true){
       hash:h,
       storage:data
     };
-    const file=await portalFindSyncFile();
     await portalUploadJson(PORTAL_SYNC_FILE,payload,file?.id||null);
     localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',payload.portalSyncAt);
     localStorage.setItem('PORTAL_SYNC_LAST_HASH',h);
     portalLastHash=h;
-    portalSetStatus('Sinkron Drive berhasil: '+new Date().toLocaleTimeString('id-ID'), true);
-    if(show) alert('Sinkron Google Drive berhasil. Data siap dibuka dari HP/laptop lain.');
+    portalSetStatus('Auto Sync • '+new Date().toLocaleTimeString('id-ID'), true);
+    if(show) alert('Sinkron Google Drive berhasil. PC/HP lain akan mengambil data terbaru otomatis setelah Login Google.');
   }catch(e){
     console.error(e);
     if(portalIsAuthError(e.message||e)){portalClearGoogleToken();}
-    const msg = portalIsAuthError(e.message||e) ? 'Sesi Google habis / token tidak valid. Klik Login Google ulang, lalu Sinkronkan lagi.' : ('Sinkron gagal: '+(e.message||e));
+    const msg = portalIsAuthError(e.message||e) ? 'Sesi Google habis / token tidak valid. Login Google ulang.' : ('Sinkron gagal: '+(e.message||e));
     if(show) alert(msg); else portalSetStatus(msg, false);
   }finally{portalSyncBusy=false;}
 }
@@ -1044,6 +1073,38 @@ async function portalSmartSyncAfterLogin(){
     }
   }catch(e){console.warn('Smart sync gagal',e); portalSetStatus('Google aktif - sync perlu manual', true);}
 }
+async function portalPollDriveChanges(){
+  if(portalSyncBusy || !window.PORTAL_ACCESS_TOKEN || document.visibilityState==='hidden') return;
+  portalSyncBusy=true;
+  try{
+    const file=await portalFindSyncFile();
+    if(!file) return;
+    const payload=await portalDownloadSyncFile(file.id);
+    if(!payload.storage) return;
+    const remoteHash=payload.hash || await portalHashSnapshot(payload.storage);
+    const localData=portalCollectStorage();
+    const localHash=await portalHashSnapshot(localData);
+    if(remoteHash===localHash){
+      portalLastHash=localHash;
+      localStorage.setItem('PORTAL_SYNC_LAST_HASH',localHash);
+      portalSetStatus('Auto Sync • data sama', true);
+      return;
+    }
+    const remoteAt=Date.parse(payload.portalSyncAt || file.modifiedTime || 0) || 0;
+    const localAt=Date.parse(localStorage.getItem('PORTAL_SYNC_LOCAL_UPDATED_AT') || localStorage.getItem('BM_V3_KAS_LAST_SAVED_AT') || 0) || 0;
+    if(remoteAt > localAt + 1500 || !portalHasBusinessData(localData)){
+      portalApplyStorage(payload.storage);
+      portalLastHash=remoteHash;
+      localStorage.setItem('PORTAL_SYNC_LAST_HASH',remoteHash);
+      localStorage.setItem('PORTAL_SYNC_LOCAL_UPDATED_AT',payload.portalSyncAt || file.modifiedTime || new Date().toISOString());
+      portalSetStatus('Auto Sync • data Drive terbaru masuk', true);
+    }
+  }catch(e){
+    console.warn('Auto cek Drive gagal',e);
+    if(portalIsAuthError(e.message||e)) portalClearGoogleToken();
+  }finally{portalSyncBusy=false;}
+}
+
 async function portalManualSync(){
   try{
     portalSyncPayrollFromStorage(true);await portalEnsureGoogleToken(); await portalBackupNow(true);}
@@ -1071,7 +1132,12 @@ async function portalWatchLocalChanges(){
 function portalStartSyncWatcher(){
   if(portalSyncTimer) return;
   portalSyncTimer=setInterval(portalWatchLocalChanges,7000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden' && window.PORTAL_ACCESS_TOKEN) portalBackupNow(false);});
+  portalRemoteTimer=setInterval(portalPollDriveChanges,20000);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible' && window.PORTAL_ACCESS_TOKEN) setTimeout(portalPollDriveChanges,500);
+    if(document.visibilityState==='hidden' && window.PORTAL_ACCESS_TOKEN) portalBackupNow(false);
+  });
+  window.addEventListener('focus',()=>{if(window.PORTAL_ACCESS_TOKEN)setTimeout(portalPollDriveChanges,300)});
   window.addEventListener('beforeunload',()=>{try{if(window.PORTAL_ACCESS_TOKEN) portalBackupNow(false)}catch(e){}});
 }
 portalStartSyncWatcher();
