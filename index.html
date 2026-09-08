@@ -496,16 +496,16 @@
       <div class="atTableWrap" style="margin-top:10px"><table class="atTable"><thead><tr><th>Karyawan</th><th>NIK</th><th>PTKP</th><th>Konfirmasi</th><th class="money">Bruto Bulan</th><th>TER</th><th class="money">PPh 21</th><th>Catatan</th></tr></thead><tbody id="atPph21Rows"></tbody></table></div>
     </div>
     <div class="atCard">
-      <h3>PPh 21 — Pekerja Borongan / Bukan Pegawai</h3>
-      <div class="atNotice warn">Sistem membaca pembayaran dari modul Borongan dan menghitung indikasi bukan pegawai berdasarkan 50% penghasilan bruto × tarif Pasal 17. Pastikan status pekerja memang bukan pegawai sebelum digunakan untuk setor/lapor.</div>
-      <div class="atTableWrap"><table class="atTable"><thead><tr><th>Pekerja</th><th class="money">Bruto Dibayar</th><th class="money">DPP 50%</th><th class="money">PPh 21 Indikatif</th></tr></thead><tbody id="atBorPph21Rows"></tbody></table></div>
+      <h3>PPh 21 — Pegawai Tidak Tetap (Upah Borongan)</h3>
+      <div class="atNotice warn">Sistem membaca pembayaran dari modul Borongan sebagai <b>Pegawai Tidak Tetap</b>. Karena pembayaran di ERP diproses per periode bulanan, PPh 21 dihitung dari <b>penghasilan bruto bulanan × TER Bulanan</b> sesuai kategori PTKP. Jika pola pembayaran berubah menjadi tidak bulanan, rumus pajak harus disesuaikan.</div>
+      <div class="atTableWrap"><table class="atTable"><thead><tr><th>Pekerja</th><th>PTKP</th><th>Konfirmasi</th><th class="money">Bruto Dibayar</th><th>TER</th><th class="money">PPh 21</th><th>Catatan</th></tr></thead><tbody id="atBorPph21Rows"></tbody></table></div>
     </div>
   </div>
 
   <div id="atPane-monthlytax" class="atPane">
     <div class="atCard">
       <h3>Pajak Bulanan</h3>
-      <div class="atNotice">PPh 21 karyawan dan borongan dihitung otomatis. PPN Keluaran dibaca dari Invoice jika status badan disetel PKP. PPN Masukan/PPh lain tetap dapat diisi karena bukti pajaknya tidak tersedia di Kas Besar.</div>
+      <div class="atNotice">PPh 21 karyawan tetap dan pegawai tidak tetap/borongan dihitung otomatis. PPN Keluaran dibaca dari Invoice jika status badan disetel PKP. PPN Masukan/PPh lain tetap dapat diisi karena bukti pajaknya tidak tersedia di Kas Besar.</div>
       <div class="atFieldGrid" style="margin-top:12px">
         <div class="atField"><label>PPh 21 Otomatis</label><input id="atPph21Auto" type="number" readonly></div>
         <div class="atField"><label>Penyesuaian PPh 21 (+/-)</label><input id="atPph21Adjust" type="number" onchange="atSaveTaxMonth()"></div>
@@ -557,9 +557,14 @@
       <div class="atNotice" style="margin-top:12px">Mode PPh Final 0,5% tidak dipilih otomatis karena kelayakannya bergantung masa fasilitas/transisi badan. Default sistem memakai tarif umum + fasilitas Pasal 31E; ubah hanya setelah status CV dikonfirmasi.</div>
     </div>
     <div class="atCard">
-      <h3>Profil Pajak Karyawan</h3>
+      <h3>Profil Pajak Karyawan Tetap</h3>
       <div class="atNotice">Pilih PTKP lalu centang “Terkonfirmasi”. Pengaturan ini hanya menambah profil pajak; tidak mengubah data Absensi/Gaji.</div>
       <div class="atTableWrap"><table class="atTable"><thead><tr><th>Karyawan</th><th>NIK</th><th>Status PTKP</th><th>Iuran Pensiun/Bulan</th><th>Terkonfirmasi</th></tr></thead><tbody id="atEmployeeProfileRows"></tbody></table></div>
+    </div>
+    <div class="atCard">
+      <h3>Profil Pajak Pegawai Tidak Tetap / Borongan</h3>
+      <div class="atNotice">Untuk pekerja borongan yang masuk dan pulang seperti karyawan tetapi upahnya berdasarkan hasil pekerjaan. Pilih status PTKP lalu centang “Terkonfirmasi”. Data pekerjaan dan pembayaran di modul Borongan tidak diubah.</div>
+      <div class="atTableWrap"><table class="atTable"><thead><tr><th>Pekerja</th><th>Status</th><th>Status PTKP</th><th>Terkonfirmasi</th></tr></thead><tbody id="atBorEmployeeProfileRows"></tbody></table></div>
     </div>
   </div>
 </section>
@@ -2841,7 +2846,7 @@ function readJson(k,f=null){try{const v=localStorage.getItem(k);return v?JSON.pa
 function firstData(keys,f={}){for(const k of keys){const d=readJson(k,null);if(d&&typeof d==='object')return d}return f}
 function defaultData(){
  return {version:'4.2',settings:{activeBookYear:new Date().getFullYear(),pkp:'NO',corpScheme:'NORMAL_31E',manualCorpRate:22},
- overrides:{},locks:{},snapshots:{},monthTax:{},annualTax:{},employeeTax:{},balance:{},audit:{},updatedAt:''};
+ overrides:{},locks:{},snapshots:{},monthTax:{},annualTax:{},employeeTax:{},boronganTax:{},balance:{},audit:{},updatedAt:''};
 }
 function migrateOld(){
  let d=readJson(KEY,null);
@@ -2868,7 +2873,7 @@ function data(){
  d.settings.corpScheme=d.settings.corpScheme||'NORMAL_31E';
  d.settings.manualCorpRate=num(d.settings.manualCorpRate)||22;
  d.overrides=d.overrides||{};d.locks=d.locks||{};d.snapshots=d.snapshots||{};d.monthTax=d.monthTax||{};
- d.annualTax=d.annualTax||{};d.employeeTax=d.employeeTax||{};d.balance=d.balance||{};d.audit=d.audit||{};
+ d.annualTax=d.annualTax||{};d.employeeTax=d.employeeTax||{};d.boronganTax=d.boronganTax||{};d.balance=d.balance||{};d.audit=d.audit||{};
  return d;
 }
 function saveData(d,signal=true){
@@ -3141,28 +3146,33 @@ function employeeTaxSummary(y,mi){
  for(const e of (st.employees||[])){const r=employeeMonthTax(st,e,y,mi);if(r.gross===null)continue;if(!ptkpConfirmed(e.id))unconfirmed++;total+=r.tax;arr.push({e,...r,status:ptkpStatus(e.id)})}
  return {rows:arr,total,unconfirmed};
 }
+function borPtkpStatus(id){const p=data().boronganTax?.[id]||{};return p.ptkp||'TK/0'}
+function borPtkpConfirmed(id){return !!(data().boronganTax?.[id]||{}).confirmed}
 function boronganMonthTax(y,mi){
- const b=bor(),period=periodKey(y,mi),workers=new Map((b.workers||[]).map(w=>[w.id,w]));
+ const b=bor(),period=periodKey(y,mi),workers=new Map((b.workers||[]).map(w=>[String(w.id),w]));
  const paid=(b.payments||[]).filter(p=>String(p.period||'')===period&&String(p.status||'DIBAYAR').toUpperCase()==='DIBAYAR');
  const grouped={};
  for(const p of paid){
-   const id=String(p.workerId||p.worker||'UNKNOWN'),gross=num(p.total??p.amount);
+   const id=String(p.workerId||p.worker||'UNKNOWN'),gross=num(p.gross??p.total??p.amount);
    if(!gross)continue;grouped[id]=(grouped[id]||0)+gross;
  }
- const rows=[];let total=0;
+ const rows=[];let total=0,unconfirmed=0;
  if(Object.keys(grouped).length){
    for(const [id,gross] of Object.entries(grouped)){
-     const dpp=gross*.5,tax=tax17(dpp);total+=tax;
-     rows.push({name:workers.get(id)?.name||String(id),gross,dpp,tax,source:'BORONGAN'});
+     const status=borPtkpStatus(id),cat=PTKP_CAT[status]||'A',rate=terRate(cat,gross),tax=Math.round(gross*rate),confirmed=borPtkpConfirmed(id);
+     if(!confirmed)unconfirmed++;total+=tax;
+     rows.push({id,name:workers.get(id)?.name||String(id),gross,status,cat,rate,tax,confirmed,source:'BORONGAN',note:(confirmed?'TER Bulanan '+cat:'ASUMSI PTKP — konfirmasi')});
    }
  }else{
    const cg=cashBoronganGroups(y,mi);
    for(const [name,gross] of Object.entries(cg)){
-     const dpp=gross*.5,tax=tax17(dpp);total+=tax;
-     rows.push({name,gross,dpp,tax,source:'KAS'});
+     const w=[...workers.values()].find(x=>String(x.name||'').trim().toLowerCase()===String(name).trim().toLowerCase()),id=String(w?.id||'CASH:'+name);
+     const status=borPtkpStatus(id),cat=PTKP_CAT[status]||'A',rate=terRate(cat,gross),tax=Math.round(gross*rate),confirmed=borPtkpConfirmed(id);
+     if(!confirmed)unconfirmed++;total+=tax;
+     rows.push({id,name,gross,status,cat,rate,tax,confirmed,source:'KAS',note:(confirmed?'TER Bulanan '+cat:'ASUMSI PTKP — konfirmasi')+' • bruto dibaca dari Kas Besar'});
    }
  }
- return {rows,total};
+ return {rows,total,unconfirmed};
 }
 function autoPph21(y,mi){const e=employeeTaxSummary(y,mi),b=boronganMonthTax(y,mi);return {employees:e,borongan:b,total:e.total+b.total}}
 
@@ -3280,12 +3290,17 @@ function renderPph21(){
  const {year,mi}=selected(),sum=employeeTaxSummary(year,mi),st=hr();
  if(!sum.rows.length)tb.innerHTML='<tr><td colspan="8">Tidak ada payroll pada periode ini.</td></tr>';
  else tb.innerHTML=sum.rows.map(r=>`<tr><td>${esc(r.e.name||'-')}</td><td>${esc(r.e.nik||'-')}</td><td>${esc(r.status)}</td><td>${ptkpConfirmed(r.e.id)?'<span class="atBadge ok">YA</span>':'<span class="atBadge warn">BELUM</span>'}</td><td class="money">${rp(r.gross)}</td><td>${r.rate===null?'Tahunan':(r.rate*100).toLocaleString('id-ID',{maximumFractionDigits:2})+'%'}</td><td class="money"><b>${rp(r.tax)}</b></td><td>${esc(r.note)}</td></tr>`).join('');
- const b=boronganMonthTax(year,mi);bt.innerHTML=b.rows.length?b.rows.map(r=>`<tr><td>${esc(r.name)}</td><td class="money">${rp(r.gross)}</td><td class="money">${rp(r.dpp)}</td><td class="money"><b>${rp(r.tax)}</b></td></tr>`).join(''):'<tr><td colspan="4">Tidak ada pembayaran borongan periode ini.</td></tr>';
+ const b=boronganMonthTax(year,mi);bt.innerHTML=b.rows.length?b.rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.status)}</td><td>${r.confirmed?'<span class="atBadge ok">YA</span>':'<span class="atBadge warn">BELUM</span>'}</td><td class="money">${rp(r.gross)}</td><td>${(r.rate*100).toLocaleString('id-ID',{maximumFractionDigits:2})}%</td><td class="money"><b>${rp(r.tax)}</b></td><td>${esc(r.note)}</td></tr>`).join(''):'<tr><td colspan="7">Tidak ada pembayaran borongan periode ini.</td></tr>';
 }
 function renderEmployeeProfiles(){
  const tb=el('atEmployeeProfileRows');if(!tb)return;const st=hr(),d=data();
  tb.innerHTML=(st.employees||[]).length?(st.employees||[]).map(e=>{const p=d.employeeTax[e.id]||{ptkp:'TK/0',pension:0,confirmed:false};return `<tr><td>${esc(e.name||'-')}</td><td>${esc(e.nik||'-')}</td><td><select onchange="atEmpTax('${encodeURIComponent(e.id)}','ptkp',this.value)">${Object.keys(PTKP_VALUES).map(s=>`<option ${s===(p.ptkp||'TK/0')?'selected':''}>${s}</option>`).join('')}</select></td><td><input type="number" min="0" value="${num(p.pension)||''}" onchange="atEmpTax('${encodeURIComponent(e.id)}','pension',this.value)"></td><td><input type="checkbox" ${p.confirmed?'checked':''} onchange="atEmpTax('${encodeURIComponent(e.id)}','confirmed',this.checked)"></td></tr>`}).join(''):'<tr><td colspan="5">Belum ada karyawan di modul Absensi.</td></tr>';
 }
+function renderBorEmployeeProfiles(){
+ const tb=el('atBorEmployeeProfileRows');if(!tb)return;const b=bor(),d=data();
+ tb.innerHTML=(b.workers||[]).length?(b.workers||[]).map(w=>{const id=String(w.id),p=d.boronganTax?.[id]||{ptkp:'TK/0',confirmed:false};return `<tr><td>${esc(w.name||'-')}</td><td>${esc(w.status||'AKTIF')}</td><td><select onchange="atBorEmpTax('${encodeURIComponent(id)}','ptkp',this.value)">${Object.keys(PTKP_VALUES).map(s=>`<option ${s===(p.ptkp||'TK/0')?'selected':''}>${s}</option>`).join('')}</select></td><td><input type="checkbox" ${p.confirmed?'checked':''} onchange="atBorEmpTax('${encodeURIComponent(id)}','confirmed',this.checked)"></td></tr>`}).join(''):'<tr><td colspan="4">Belum ada pekerja di modul Borongan.</td></tr>';
+}
+window.atBorEmpTax=function(id,field,value){id=decodeURIComponent(id);const d=data();d.boronganTax=d.boronganTax||{};d.boronganTax[id]=d.boronganTax[id]||{ptkp:'TK/0',confirmed:false};d.boronganTax[id][field]=value;saveData(d);renderPph21();renderBorEmployeeProfiles();loadTaxMonth(selected().year,selected().mi)};
 window.atEmpTax=function(id,field,value){id=decodeURIComponent(id);const d=data();d.employeeTax[id]=d.employeeTax[id]||{ptkp:'TK/0',pension:0,confirmed:false};d.employeeTax[id][field]=field==='pension'?num(value):value;saveData(d);renderPph21();renderEmployeeProfiles();loadTaxMonth(selected().year,selected().mi)};
 
 function loadTaxMonth(y,mi){
@@ -3298,7 +3313,7 @@ function loadTaxMonth(y,mi){
  set('atTaxFiledDate',t.filedDate||'');set('atTaxRef',t.ref||'');
  const pph21=Math.max(0,auto.total+num(t.pph21Adjust)),vatOut=(t.vatOutOverride===null||t.vatOutOverride===undefined||t.vatOutOverride==='')?vatAuto:num(t.vatOutOverride),netVat=Math.max(0,vatOut-num(t.vatIn)-num(t.vatCarry));
  const total=pph21+num(t.pph23Payable)+num(t.otherTaxPayable)+netVat;
- el('atMonthlyTaxSummary').innerHTML=`<div class="atPLRow"><span>PPh 21 Karyawan Otomatis</span><b>${rp(auto.employees.total)}</b></div><div class="atPLRow"><span>PPh 21 Borongan Indikatif</span><b>${rp(auto.borongan.total)}</b></div><div class="atPLRow"><span>PPh 21 Setelah Penyesuaian</span><b>${rp(pph21)}</b></div><div class="atPLRow"><span>PPh 23 / Pajak Vendor</span><b>${rp(t.pph23Payable)}</b></div><div class="atPLRow"><span>PPN Kurang Bayar</span><b>${rp(netVat)}</b></div><div class="atPLRow total"><span>Total Kewajiban Masa Tercatat</span><b>${rp(total)}</b></div>${auto.employees.unconfirmed?`<div class="atNotice warn" style="margin-top:8px">${auto.employees.unconfirmed} karyawan belum mengonfirmasi status PTKP.</div>`:''}`;
+ el('atMonthlyTaxSummary').innerHTML=`<div class="atPLRow"><span>PPh 21 Karyawan Otomatis</span><b>${rp(auto.employees.total)}</b></div><div class="atPLRow"><span>PPh 21 Pegawai Tidak Tetap / Borongan</span><b>${rp(auto.borongan.total)}</b></div><div class="atPLRow"><span>PPh 21 Setelah Penyesuaian</span><b>${rp(pph21)}</b></div><div class="atPLRow"><span>PPh 23 / Pajak Vendor</span><b>${rp(t.pph23Payable)}</b></div><div class="atPLRow"><span>PPN Kurang Bayar</span><b>${rp(netVat)}</b></div><div class="atPLRow total"><span>Total Kewajiban Masa Tercatat</span><b>${rp(total)}</b></div>${auto.employees.unconfirmed?`<div class="atNotice warn" style="margin-top:8px">${auto.employees.unconfirmed} karyawan belum mengonfirmasi status PTKP.</div>`:''}`;
 }
 window.atSaveTaxMonth=function(){
  const {year,mi}=selected(),d=data(),k=periodKey(year,mi),rawOverride=el('atVatOutOverride').value;
@@ -3329,7 +3344,7 @@ window.atSaveAnnualTax=function(){const {year}=selected(),d=data();d.annualTax[y
 
 function renderSettings(){
  const d=data();if(!el('atActiveBookYear'))return;
- el('atActiveBookYear').value=d.settings.activeBookYear;el('atPkp').value=d.settings.pkp;el('atCorpScheme').value=d.settings.corpScheme;el('atManualCorpRate').value=num(d.settings.manualCorpRate)||22;renderEmployeeProfiles();
+ el('atActiveBookYear').value=d.settings.activeBookYear;el('atPkp').value=d.settings.pkp;el('atCorpScheme').value=d.settings.corpScheme;el('atManualCorpRate').value=num(d.settings.manualCorpRate)||22;renderEmployeeProfiles();renderBorEmployeeProfiles();
 }
 window.atSaveSettings=function(){
  const d=data(),old=d.settings.activeBookYear,next=Number(el('atActiveBookYear').value)||old;
@@ -3354,7 +3369,7 @@ function runAuditInternal(){
    const srcOut=((bucket.operasional||[]).length?(bucket.operasional||[]):(bucket.pengeluaran||[])).reduce((a,x)=>a+amount(x),0);
    add(Math.abs(srcIn-s.cashIn)<1&&Math.abs(srcOut-s.cashOut)<1,'Cocok dengan Kas Besar',`Sumber: masuk ${rp(srcIn)} / keluar ${rp(srcOut)} • Akuntansi: masuk ${rp(s.cashIn)} / keluar ${rp(s.cashOut)}`,Math.abs(srcIn-s.cashIn)<1&&Math.abs(srcOut-s.cashOut)<1?'OK':'FAIL');
  }
- const emp=employeeTaxSummary(year,mi);add(emp.unconfirmed===0,'Status PTKP karyawan',emp.unconfirmed?emp.unconfirmed+' belum dikonfirmasi':'Semua payroll aktif terkonfirmasi',emp.unconfirmed?'WARN':'OK');
+ const emp=employeeTaxSummary(year,mi);add(emp.unconfirmed===0,'Status PTKP karyawan tetap',emp.unconfirmed?emp.unconfirmed+' belum dikonfirmasi':'Semua payroll aktif terkonfirmasi',emp.unconfirmed?'WARN':'OK'); const borTax=boronganMonthTax(year,mi);add(borTax.unconfirmed===0,'Status PTKP pegawai tidak tetap',borTax.unconfirmed?borTax.unconfirmed+' pekerja borongan belum dikonfirmasi':'Semua pekerja borongan terkonfirmasi',borTax.unconfirmed?'WARN':'OK');
  if(d.settings.pkp==='YES')add(true,'Status PKP','PPN Keluaran dibaca dari Invoice');
  else add(true,'Status PKP','NON-PKP — PPN otomatis tidak dihitung');
  add(!!d.settings.corpScheme,'Skema PPh Badan',d.settings.corpScheme||'Belum dipilih',d.settings.corpScheme?'OK':'WARN');
