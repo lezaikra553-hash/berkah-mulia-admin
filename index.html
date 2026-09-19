@@ -323,7 +323,7 @@
   <div id="borPane-recap" class="borPane">
     <div class="borCard">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap">
-        <div><h3 style="margin:0">Rekap Borongan Mingguan</h3><div class="borInfo" style="margin-top:8px">Rekap otomatis dikelompokkan per minggu (Senin–Minggu) berdasarkan tanggal kerja. Data baru tetap berstatus belum dibayar sampai pembayaran benar-benar diproses.</div></div>
+        <div><h3 style="margin:0">Rekap Borongan Mingguan</h3><div class="borInfo" style="margin-top:8px">Mulai 14 September 2026, rekap dikelompokkan per minggu kerja Senin–Sabtu. Data sebelum tanggal tersebut tetap menjadi arsip bulanan beserta status pembayarannya.</div></div>
         <div class="borActions noPrint"><select id="borPeriod" onchange="borRender()" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px"></select><button class="borBtn borGray" onclick="borPrintPane('recap')">🖨 Print</button></div>
       </div>
     </div>
@@ -2212,14 +2212,16 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const parseIso=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(Number(m[1]),Number(m[2])-1,Number(m[3])):null};
-const weekStart=date=>{const d=parseIso(date)||new Date(),day=d.getDay()||7;d.setDate(d.getDate()-day+1);return isoLocal(d)};
+const WEEKLY_CUTOFF='2026-09-14';
+const weekStart=date=>{const d=parseIso(date)||new Date(),day=d.getDay();d.setDate(d.getDate()+(day===0?1:1-day));return isoLocal(d)};
 const periodForDate=date=>'W:'+weekStart(date);
-const periodNow=()=>periodForDate(today());
+const workPeriodForDate=date=>String(date||'')<WEEKLY_CUTOFF?String(date||'').slice(0,7):periodForDate(date);
+const periodNow=()=>workPeriodForDate(today());
 const periodLabel=p=>{
  const raw=String(p||'');
  if(/^\d{4}-\d{2}$/.test(raw)){const [y,m]=raw.split('-').map(Number);return LABELS[m-1]+' '+y+' (arsip bulanan)'}
  const start=parseIso(raw.replace(/^W:/,''));if(!start)return raw;
- const end=new Date(start);end.setDate(end.getDate()+6);
+ const end=new Date(start);end.setDate(end.getDate()+5);
  const a=start.getDate(),b=end.getDate(),ma=LABELS[start.getMonth()],mb=LABELS[end.getMonth()];
  return start.getMonth()===end.getMonth()?a+'–'+b+' '+ma+' '+end.getFullYear():a+' '+ma+'–'+b+' '+mb+' '+end.getFullYear();
 };
@@ -2250,10 +2252,10 @@ function paymentFor(period,workerId){return paymentsFor(period,workerId).slice()
 function paidFor(period,workerId){return paymentsFor(period,workerId).reduce((s,x)=>s+num(x.amount),0)}
 function entriesFor(period,workerId){
  const legacy=/^\d{4}-\d{2}$/.test(String(period));
- return S.entries.filter(x=>(legacy?String(x.date).slice(0,7)===period:periodForDate(x.date)===period)&&(!workerId||x.workerId===workerId));
+ return S.entries.filter(x=>(legacy?(String(x.date)<WEEKLY_CUTOFF&&String(x.date).slice(0,7)===period):workPeriodForDate(x.date)===period)&&(!workerId||x.workerId===workerId));
 }
 function activePeriods(){
- const set=new Set([periodNow(),...S.entries.map(x=>periodForDate(x.date)),...S.payments.map(x=>x.period).filter(Boolean)]);
+ const set=new Set([periodNow(),...S.entries.map(x=>workPeriodForDate(x.date)).filter(Boolean),...S.payments.map(x=>x.period).filter(Boolean)]);
  return [...set].sort().reverse();
 }
 function ensureWorker(name){
