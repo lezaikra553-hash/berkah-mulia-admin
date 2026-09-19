@@ -323,7 +323,7 @@
   <div id="borPane-recap" class="borPane">
     <div class="borCard">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:end;flex-wrap:wrap">
-        <div><h3 style="margin:0">Rekap Borongan Otomatis</h3><div class="borInfo" style="margin-top:8px">Rekap dihitung dari pekerjaan harian pada periode terpilih.</div></div>
+        <div><h3 style="margin:0">Rekap Borongan Mingguan</h3><div class="borInfo" style="margin-top:8px">Rekap otomatis dikelompokkan per minggu (Senin–Minggu) berdasarkan tanggal kerja. Data baru tetap berstatus belum dibayar sampai pembayaran benar-benar diproses.</div></div>
         <div class="borActions noPrint"><select id="borPeriod" onchange="borRender()" style="padding:9px;border:1px solid #cbd5e1;border-radius:10px"></select><button class="borBtn borGray" onclick="borPrintPane('recap')">🖨 Print</button></div>
       </div>
     </div>
@@ -335,7 +335,7 @@
       <h3>Proses Pembayaran Borongan</h3>
       <div class="borInfo borWarn">Tanggal pembayaran tidak dibuat otomatis. Pilih tanggal saat pembayaran benar-benar diproses, seperti proses payroll.</div>
       <div class="borForm" style="margin-top:12px">
-        <div class="borField"><label>Periode</label><select id="borPaymentPeriod" onchange="borPaymentPreview()"></select></div>
+        <div class="borField"><label>Periode Mingguan</label><select id="borPaymentPeriod" onchange="borPaymentPreview()"></select></div>
         <div class="borField"><label>Tanggal Bayar</label><input id="borPaymentDate" type="date"></div>
         <div class="borField"><label>Metode</label><select id="borPaymentMethod"><option>TRANSFER</option><option>TUNAI</option><option>LAINNYA</option></select></div>
         <div class="borField" style="grid-column:span 2"><label>Keterangan</label><input id="borPaymentNote" placeholder="Opsional"></div>
@@ -349,7 +349,7 @@
   <div id="borPane-slip" class="borPane">
     <div class="borCard noPrint">
       <div class="borForm">
-        <div class="borField"><label>Periode</label><select id="borSlipPeriod" onchange="borFillSlipWorkers()"></select></div>
+        <div class="borField"><label>Periode Mingguan</label><select id="borSlipPeriod" onchange="borFillSlipWorkers()"></select></div>
         <div class="borField"><label>Pekerja</label><select id="borSlipWorker" onchange="borRenderSlip()"></select></div>
         <button class="borBtn borPurple" onclick="borRenderSlip()">Tampilkan Slip</button>
         <button class="borBtn borGray" onclick="borPrintPane('slip')">🖨 Print Slip</button>
@@ -498,7 +498,7 @@
     </div>
     <div class="atCard">
       <h3>PPh 21 — Pegawai Tidak Tetap (Upah Borongan)</h3>
-      <div class="atNotice warn">Sistem membaca pembayaran dari modul Borongan sebagai <b>Pegawai Tidak Tetap</b>. Karena pembayaran di ERP diproses per periode bulanan, PPh 21 dihitung dari <b>penghasilan bruto bulanan × TER Bulanan</b> sesuai kategori PTKP. Jika pola pembayaran berubah menjadi tidak bulanan, rumus pajak harus disesuaikan.</div>
+      <div class="atNotice warn">Sistem membaca pembayaran mingguan dari modul Borongan sebagai <b>Pegawai Tidak Tetap</b>, lalu menggabungkan seluruh pembayaran berdasarkan bulan tanggal bayar untuk rekap pajak. Estimasi PPh 21 tetap memakai <b>penghasilan bruto bulanan × TER Bulanan</b> sesuai kategori PTKP.</div>
       <div class="atTableWrap"><table class="atTable"><thead><tr><th>Pekerja</th><th>PTKP</th><th>Konfirmasi</th><th class="money">Bruto Dibayar</th><th>TER</th><th class="money">PPh 21</th><th>Catatan</th></tr></thead><tbody id="atBorPph21Rows"></tbody></table></div>
     </div>
   </div>
@@ -2210,9 +2210,20 @@ const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const money=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(num(v));
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-const periodNow=()=>today().slice(0,7);
-const periodLabel=p=>{const [y,m]=String(p).split('-').map(Number);return LABELS[m-1]+' '+y};
-const monthKey=p=>MONTHS[Number(String(p).slice(5,7))-1]||'';
+const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const parseIso=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(Number(m[1]),Number(m[2])-1,Number(m[3])):null};
+const weekStart=date=>{const d=parseIso(date)||new Date(),day=d.getDay()||7;d.setDate(d.getDate()-day+1);return isoLocal(d)};
+const periodForDate=date=>'W:'+weekStart(date);
+const periodNow=()=>periodForDate(today());
+const periodLabel=p=>{
+ const raw=String(p||'');
+ if(/^\d{4}-\d{2}$/.test(raw)){const [y,m]=raw.split('-').map(Number);return LABELS[m-1]+' '+y+' (arsip bulanan)'}
+ const start=parseIso(raw.replace(/^W:/,''));if(!start)return raw;
+ const end=new Date(start);end.setDate(end.getDate()+6);
+ const a=start.getDate(),b=end.getDate(),ma=LABELS[start.getMonth()],mb=LABELS[end.getMonth()];
+ return start.getMonth()===end.getMonth()?a+'–'+b+' '+ma+' '+end.getFullYear():a+' '+ma+'–'+b+' '+mb+' '+end.getFullYear();
+};
+const monthKeyFromDate=date=>{const d=parseIso(date);return d?MONTHS[d.getMonth()]:''};
 const uid=p=>(p||'ID')+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
 
 function load(){
@@ -2234,10 +2245,15 @@ function writeCash(db){
 }
 function workerName(id){return S.workers.find(x=>x.id===id)?.name||'Tanpa Nama'}
 function entryTotal(x){return num(x.amount)||num(x.qty)*num(x.rate)}
-function paymentFor(period,workerId){return S.payments.find(x=>x.period===period&&x.workerId===workerId&&x.status==='DIBAYAR')}
-function entriesFor(period,workerId){return S.entries.filter(x=>String(x.date).slice(0,7)===period&&(!workerId||x.workerId===workerId))}
+function paymentsFor(period,workerId){return S.payments.filter(x=>x.period===period&&x.workerId===workerId&&x.status==='DIBAYAR')}
+function paymentFor(period,workerId){return paymentsFor(period,workerId).slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate)))[0]}
+function paidFor(period,workerId){return paymentsFor(period,workerId).reduce((s,x)=>s+num(x.amount),0)}
+function entriesFor(period,workerId){
+ const legacy=/^\d{4}-\d{2}$/.test(String(period));
+ return S.entries.filter(x=>(legacy?String(x.date).slice(0,7)===period:periodForDate(x.date)===period)&&(!workerId||x.workerId===workerId));
+}
 function activePeriods(){
- const set=new Set([periodNow(),...S.entries.map(x=>String(x.date).slice(0,7)).filter(x=>/^\d{4}-\d{2}$/.test(x)),...S.payments.map(x=>x.period)]);
+ const set=new Set([periodNow(),...S.entries.map(x=>periodForDate(x.date)),...S.payments.map(x=>x.period).filter(Boolean)]);
  return [...set].sort().reverse();
 }
 function ensureWorker(name){
@@ -2328,7 +2344,7 @@ function syncCash(){
    db.transactions[m]=b;
  });
  S.payments.filter(x=>x.status==='DIBAYAR').forEach(p=>{
-   const mk=monthKey(p.period);if(!mk)return;
+   const mk=monthKeyFromDate(p.paymentDate)||(/^\d{4}-\d{2}$/.test(String(p.period))?MONTHS[Number(String(p.period).slice(5,7))-1]:monthKeyFromDate(String(p.period).replace(/^W:/,'')));if(!mk)return;
    db.transactions[mk]=db.transactions[mk]||{pemasukan:[],operasional:[]};
    db.transactions[mk].operasional=Array.isArray(db.transactions[mk].operasional)?db.transactions[mk].operasional:[];
    db.transactions[mk].operasional.push({
@@ -2423,17 +2439,17 @@ window.borPaymentPreview=function(){
    '<div class="borMetric borCard"><small>Periode</small><b>'+esc(periodLabel(p))+'</b></div>'+
    '<div class="borMetric borCard"><small>Pekerja</small><b>'+rows.length+'</b></div>'+
    '<div class="borMetric borCard"><small>Total Tagihan</small><b>'+money(total)+'</b></div>'+
-   '<div class="borMetric borCard"><small>Sudah Dibayar</small><b>'+rows.filter(x=>paymentFor(p,x.workerId)).length+'</b></div></div>'+
-   '<div style="overflow:auto"><table class="borTable"><thead><tr><th>Pekerja</th><th>Total</th><th>Status</th></tr></thead><tbody>'+
-   (rows.length?rows.map(x=>'<tr><td>'+esc(workerName(x.workerId))+'</td><td>'+money(x.total)+'</td><td><span class="borStatus '+(paymentFor(p,x.workerId)?'paid':'')+'">'+(paymentFor(p,x.workerId)?'DIBAYAR':'BELUM DIBAYAR')+'</span></td></tr>').join(''):'<tr><td colspan="3">Belum ada data.</td></tr>')+
+   '<div class="borMetric borCard"><small>Lunas</small><b>'+rows.filter(x=>paidFor(p,x.workerId)>=x.total&&x.total>0).length+'</b></div></div>'+
+   '<div style="overflow:auto"><table class="borTable"><thead><tr><th>Pekerja</th><th>Total</th><th>Terbayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+
+   (rows.length?rows.map(x=>{const paid=paidFor(p,x.workerId),due=Math.max(0,x.total-paid),status=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';return '<tr><td>'+esc(workerName(x.workerId))+'</td><td>'+money(x.total)+'</td><td>'+money(paid)+'</td><td>'+money(due)+'</td><td><span class="borStatus '+(due===0&&x.total>0?'paid':'')+'">'+status+'</span></td></tr>'}).join(''):'<tr><td colspan="5">Belum ada data.</td></tr>')+
    '</tbody></table></div>';
 };
 window.borProcessPayment=function(){
  load();const period=el('borPaymentPeriod').value,date=el('borPaymentDate').value,method=el('borPaymentMethod').value,note=el('borPaymentNote').value.trim();
  if(!date){alert('Tanggal pembayaran wajib dipilih.');return}
- const rows=recap(period).filter(x=>!paymentFor(period,x.workerId));if(!rows.length){alert('Semua pekerja pada periode ini sudah dibayar atau belum ada data.');return}
+ const rows=recap(period).map(x=>({...x,outstanding:Math.max(0,x.total-paidFor(period,x.workerId))})).filter(x=>x.outstanding>0);if(!rows.length){alert('Semua pekerja pada periode ini sudah dibayar atau belum ada data.');return}
  if(!confirm('Proses pembayaran '+rows.length+' pekerja untuk '+periodLabel(period)+'?'))return;
- rows.forEach(x=>S.payments.push({id:uid('P'),period,workerId:x.workerId,paymentDate:date,method,note,amount:x.total,status:'DIBAYAR',processedAt:new Date().toISOString()}));
+ rows.forEach(x=>S.payments.push({id:uid('P'),period,workerId:x.workerId,paymentDate:date,method,note,amount:x.outstanding,status:'DIBAYAR',processedAt:new Date().toISOString()}));
  save();syncCash();borRender();alert('Pembayaran borongan berhasil diproses dan masuk ke Kas Besar.');
 };
 window.borCancelPayment=function(id){
@@ -2444,12 +2460,12 @@ window.borFillSlipWorkers=function(){
  const ids=[...new Set(entriesFor(p).map(x=>x.workerId))];const old=sel.value;sel.innerHTML=ids.map(id=>'<option value="'+id+'">'+esc(workerName(id))+'</option>').join('');sel.value=ids.includes(old)?old:(ids[0]||'');
 };
 window.borRenderSlip=function(){
- load();const p=el('borSlipPeriod')?.value||activePeriods()[0],wid=el('borSlipWorker')?.value,rows=entriesFor(p,wid),pay=paymentFor(p,wid),total=rows.reduce((s,x)=>s+entryTotal(x),0);
+ load();const p=el('borSlipPeriod')?.value||activePeriods()[0],wid=el('borSlipWorker')?.value,rows=entriesFor(p,wid),pay=paymentFor(p,wid),total=rows.reduce((s,x)=>s+entryTotal(x),0),paid=paidFor(p,wid),due=Math.max(0,total-paid),status=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';
  el('borSlipArea').innerHTML='<div class="borSlipHead"><div><h2>BERKAH MULIA ADV</h2><div>SLIP PEMBAYARAN BORONGAN</div></div><div style="text-align:right"><b>'+esc(periodLabel(p))+'</b><br><small>'+esc(pay?.paymentDate||'Belum dibayar')+'</small></div></div>'+
- '<table class="borTable"><tbody><tr><td>Nama Pekerja</td><td><b>'+esc(workerName(wid))+'</b></td></tr><tr><td>Status</td><td><span class="borStatus '+(pay?'paid':'')+'">'+(pay?'DIBAYAR':'BELUM DIBAYAR')+'</span></td></tr><tr><td>Metode</td><td>'+esc(pay?.method||'-')+'</td></tr></tbody></table>'+
+ '<table class="borTable"><tbody><tr><td>Nama Pekerja</td><td><b>'+esc(workerName(wid))+'</b></td></tr><tr><td>Status</td><td><span class="borStatus '+(due===0&&total>0?'paid':'')+'">'+status+'</span></td></tr><tr><td>Metode</td><td>'+esc(pay?.method||'-')+'</td></tr><tr><td>Sudah Dibayar</td><td>'+money(paid)+'</td></tr><tr><td>Sisa</td><td>'+money(due)+'</td></tr></tbody></table>'+
  '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th></tr></thead><tbody>'+
  (rows.length?rows.map(x=>'<tr><td>'+esc(x.date)+'</td><td>'+esc(x.description)+'</td><td>'+x.qty+'</td><td>'+esc(x.unit||'-')+'</td><td>'+money(x.rate)+'</td><td>'+money(entryTotal(x))+'</td></tr>').join(''):'<tr><td colspan="6">Belum ada rincian.</td></tr>')+
- '</tbody></table></div><div class="borSlipTotal"><span>TOTAL DIBAYAR</span><span>'+money(total)+'</span></div><div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+esc(workerName(wid))+'</b></div></div>';
+ '</tbody></table></div><div class="borSlipTotal"><span>TOTAL BORONGAN</span><span>'+money(total)+'</span></div><div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+esc(workerName(wid))+'</b></div></div>';
 };
 window.borPrintPane=function(name){
  document.querySelectorAll('.borPane').forEach(x=>x.classList.remove('printActive'));
@@ -2465,7 +2481,7 @@ window.borRender=function(){
  ].map(x=>'<div class="borCard borMetric"><small>'+esc(x[0])+'</small><b>'+esc(x[1])+'</b></div>').join('');
  el('borWorkerRows').innerHTML=S.workers.length?S.workers.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(x.name)+'</b></td><td>'+esc(x.phone||'-')+'</td><td>'+esc(x.skill||'-')+'</td><td>'+money(x.rate)+'</td><td>'+esc(x.status)+'</td><td class="noPrint"><button type="button" class="borBtn borGray borWorkerEditBtn" data-worker-id="'+esc(x.id)+'">Edit</button> <button type="button" class="borBtn borRed borWorkerDeleteBtn" data-worker-id="'+esc(x.id)+'">Hapus</button></td></tr>').join(''):'<tr><td colspan="7">Belum ada pekerja.</td></tr>';
  el('borDailyRows').innerHTML=daily.length?daily.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.date)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+esc(x.description)+'</td><td>'+x.qty+'</td><td>'+esc(x.unit||'-')+'</td><td>'+money(x.rate)+'</td><td>'+money(entryTotal(x))+'</td><td class="noPrint"><button class="borBtn borGray" onclick="borEditEntry(\''+x.id+'\')">Edit</button> <button class="borBtn borRed" onclick="borDeleteEntry(\''+x.id+'\')">Hapus</button></td></tr>').join(''):'<tr><td colspan="9">Belum ada pekerjaan pada periode ini.</td></tr>';
- el('borRecapRows').innerHTML=r.length?r.map((x,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(workerName(x.workerId))+'</b></td><td>'+x.count+'</td><td>'+x.qty+'</td><td>'+money(x.total)+'</td><td><span class="borStatus '+(paymentFor(p,x.workerId)?'paid':'')+'">'+(paymentFor(p,x.workerId)?'DIBAYAR':'BELUM DIBAYAR')+'</span></td></tr>').join(''):'<tr><td colspan="6">Belum ada rekap.</td></tr>';
+ el('borRecapRows').innerHTML=r.length?r.map((x,i)=>{const paid=paidFor(p,x.workerId),due=Math.max(0,x.total-paid),status=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';return '<tr><td>'+(i+1)+'</td><td><b>'+esc(workerName(x.workerId))+'</b></td><td>'+x.count+'</td><td>'+x.qty+'</td><td>'+money(x.total)+'</td><td><span class="borStatus '+(due===0&&x.total>0?'paid':'')+'">'+status+'</span></td></tr>'}).join(''):'<tr><td colspan="6">Belum ada rekap.</td></tr>';
  el('borPaymentRows').innerHTML=S.payments.length?S.payments.slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate))).map(x=>'<tr><td>'+esc(periodLabel(x.period))+'</td><td>'+esc(x.paymentDate)+'</td><td>'+esc(x.method)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+money(x.amount)+'</td><td><span class="borStatus '+(x.status==='DIBAYAR'?'paid':'')+'">'+esc(x.status)+'</span></td><td class="noPrint">'+(x.status==='DIBAYAR'?'<button class="borBtn borRed" onclick="borCancelPayment(\''+x.id+'\')">Batalkan</button>':'-')+'</td></tr>').join(''):'<tr><td colspan="7">Belum ada pembayaran.</td></tr>';
  borPaymentPreview();borFillSlipWorkers();borRenderSlip();
 };
@@ -3173,7 +3189,7 @@ function borPtkpStatus(id){const p=data().boronganTax?.[id]||{};return p.ptkp||'
 function borPtkpConfirmed(id){return !!(data().boronganTax?.[id]||{}).confirmed}
 function boronganMonthTax(y,mi){
  const b=bor(),period=periodKey(y,mi),workers=new Map((b.workers||[]).map(w=>[String(w.id),w]));
- const paid=(b.payments||[]).filter(p=>String(p.period||'')===period&&String(p.status||'DIBAYAR').toUpperCase()==='DIBAYAR');
+ const paid=(b.payments||[]).filter(p=>{const payMonth=String(p.paymentDate||'').slice(0,7),legacy=String(p.period||'');return (payMonth===period||(!payMonth&&legacy===period))&&String(p.status||'DIBAYAR').toUpperCase()==='DIBAYAR'});
  const grouped={};
  for(const p of paid){
    const id=String(p.workerId||p.worker||'UNKNOWN'),gross=num(p.gross??p.total??p.amount);
