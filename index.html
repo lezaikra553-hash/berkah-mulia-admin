@@ -281,6 +281,7 @@
     <button class="borTab" data-borpane="daily" onclick="borOpenPane('daily',this)">🧰 Input Borongan Harian</button>
     <button class="borTab" data-borpane="recap" onclick="borOpenPane('recap',this)">📋 Rekap Borongan</button>
     <button class="borTab" data-borpane="payment" onclick="borOpenPane('payment',this)">💵 Pembayaran</button>
+    <button class="borTab" data-borpane="kasbon" onclick="borOpenPane('kasbon',this)">💸 Kasbon</button>
     <button class="borTab" data-borpane="slip" onclick="borOpenPane('slip',this)">🧾 Slip Pembayaran</button>
   </div>
 
@@ -348,22 +349,26 @@
         <button class="borBtn borGreen" onclick="borProcessPayment()">Proses Pembayaran</button>
       </div>
     </div>
-    <div class="borCard">
-      <h3>💸 Kasbon Borongan</h3>
-      <div class="borInfo">Kasbon dicatat berdasarkan <b>tanggal kasbon</b>. Kasbon yang masih <b>BELUM DIPOTONG</b> akan otomatis dipotong saat pembayaran borongan mingguan diproses berdasarkan <b>Tanggal Bayar</b>. Kasbon yang dibuat langsung masuk ke <b>Kas Besar</b>; saat dipotong, hanya rekap borongan yang berkurang.</div>
-      <div class="borForm" style="margin-top:12px">
-        <div class="borField"><label>Nama</label><select id="borKasbonWorker"></select></div>
-        <div class="borField"><label>Tanggal</label><input id="borKasbonDate" type="date"></div>
-        <div class="borField"><label>Nominal</label><input id="borKasbonAmount" type="number" min="0" value="0"></div>
-        <div class="borField"><label>Status Potongan</label><input id="borKasbonStatus" value="BELUM DIPOTONG" disabled></div>
-        <div class="borField" style="grid-column:span 2"><label>Keterangan</label><input id="borKasbonNote" placeholder="Contoh: uang muka / pinjaman pribadi"></div>
-      </div>
-      <div class="borActions" style="margin-top:10px"><button class="borBtn borOrange" onclick="borAddKasbon()">+ Simpan Kasbon</button></div>
-      <div style="overflow:auto;margin-top:12px"><table class="borTable"><thead><tr><th>Nama</th><th>Tanggal</th><th>Nominal</th><th>Keterangan</th><th>Status</th><th class="noPrint">Aksi</th></tr></thead><tbody id="borKasbonRows"></tbody></table></div>
     </div>
     </div>
     <div class="borCard"><div id="borPaymentSummary"></div></div>
     <div class="borCard"><h3>Riwayat Pembayaran</h3><div style="overflow:auto"><table class="borTable"><thead><tr><th>Periode</th><th>Tanggal Bayar</th><th>Metode</th><th>Pekerja</th><th>Total</th><th>Status</th><th class="noPrint">Aksi</th></tr></thead><tbody id="borPaymentRows"></tbody></table></div></div>
+  </div>
+
+  <div id="borPane-kasbon" class="borPane">
+    <div class="borCard">
+      <h3>💸 Kasbon Borongan</h3>
+      <div class="borInfo">Kasbon dicatat berdasarkan <b>Tanggal Kasbon</b>. Saat pembayaran borongan mingguan diproses, Anda memilih kasbon yang ingin dipotong. <b>Tanggal Pemotongan</b> otomatis mengikuti <b>Tanggal Bayar</b>. Kasbon yang dibuat langsung masuk ke Kas Besar; saat dipotong, hanya borongan yang berkurang.</div>
+      <div class="borForm" style="margin-top:12px">
+        <div class="borField"><label>Nama</label><select id="borKasbonWorker"></select></div>
+        <div class="borField"><label>Tanggal Kasbon</label><input id="borKasbonDate" type="date"></div>
+        <div class="borField"><label>Nominal</label><input id="borKasbonAmount" type="number" min="0" value="0"></div>
+        <div class="borField"><label>Status</label><input id="borKasbonStatus" value="BELUM DIPOTONG" disabled></div>
+        <div class="borField" style="grid-column:span 2"><label>Keterangan</label><input id="borKasbonNote" placeholder="Contoh: uang muka / pinjaman pribadi"></div>
+      </div>
+      <div class="borActions" style="margin-top:10px"><button class="borBtn borOrange" onclick="borAddKasbon()">+ Simpan Kasbon</button></div>
+      <div style="overflow:auto;margin-top:12px"><table class="borTable"><thead><tr><th>Nama</th><th>Tanggal Kasbon</th><th>Nominal</th><th>Tanggal Pemotongan</th><th>Keterangan</th><th>Status</th><th class="noPrint">Aksi</th></tr></thead><tbody id="borKasbonRows"></tbody></table></div>
+    </div>
   </div>
 
   <div id="borPane-slip" class="borPane">
@@ -2038,6 +2043,55 @@ setTimeout(run,500);
    @page{size:${landscape?'A4 landscape':'A4 portrait'};margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:12px}.ph{text-align:center;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:14px}.ph h1{font-size:18px;margin:0 0 4px}.ph h2{font-size:14px;margin:0}.ph p{font-size:10px;color:#64748b;margin:5px 0 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}th{background:#f1f5f9}.hero,.card,.enterpriseCard,.bhCard{box-shadow:none!important;border:1px solid #dbe3ee!important;margin-bottom:12px!important;padding:12px!important;background:#fff!important}.enterpriseGrid,.bhGrid,.grid4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.enterpriseTwo{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}button{display:none!important}.portalTop,.sidebar,.tabs,.nav,.toolbar{display:none!important}body>*{max-width:100%!important}.money{text-align:right}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body><div class="ph"><h1>${esc(COMPANY)}</h1><h2>${esc(title)}</h2><p>Dicetak: ${new Date().toLocaleString('id-ID')}</p></div>${clone.outerHTML}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
 
 \n\n
+
+<script id="borongan-kasbon-clean-final">
+(function(){
+  'use strict';
+  if(window.__BOR_KASBON_CLEAN_FINAL__) return;
+  window.__BOR_KASBON_CLEAN_FINAL__=true;
+  const escK=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const moneyK=v=>money(Number(v)||0);
+  const stateK={selected:new Set()};
+  function loadK(){try{load()}catch(e){} S.workers=Array.isArray(S.workers)?S.workers:[];S.entries=Array.isArray(S.entries)?S.entries:[];S.payments=Array.isArray(S.payments)?S.payments:[];S.kasbons=Array.isArray(S.kasbons)?S.kasbons:[];}
+  function workerListK(){loadK();return S.workers.filter(w=>String(w.status||'').trim().toUpperCase()!=='NONAKTIF');}
+  function remainingK(k){if(k.remainingAmount!=null)return Math.max(0,Number(k.remainingAmount)||0);return Math.max(0,(Number(k.amount)||0)-(k.deductions||[]).reduce((a,d)=>a+(Number(d.amount)||0),0));}
+  function eligibleK(date,wid){loadK();return S.kasbons.filter(k=>k.status!=='DIBATALKAN'&&(!wid||String(k.workerId)===String(wid))&&String(k.date||'')<=String(date||'')&&remainingK(k)>0).sort((a,b)=>String(a.date).localeCompare(String(b.date)));}
+  function fillWorkerK(id,preferred){const sel=document.getElementById(id);if(!sel)return;const old=preferred!=null?preferred:sel.value, ws=workerListK();sel.innerHTML='<option value="">Pilih nama</option>'+ws.map(w=>'<option value="'+escK(w.id)+'">'+escK(w.name||'Tanpa Nama')+'</option>').join('');if(ws.some(w=>String(w.id)===String(old)))sel.value=old;}
+  function selectedForWorkerK(wid,date){return eligibleK(date,wid).filter(k=>stateK.selected.has(String(k.id)));}
+  function renderKasbonK(){
+    loadK(); fillWorkerK('borKasbonWorker');
+    const d=document.getElementById('borKasbonDate');if(d&&!d.value)d.value=today();
+    const rows=S.kasbons.filter(k=>k.status!=='DIBATALKAN').sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const body=document.getElementById('borKasbonRows');if(!body)return;
+    body.innerHTML=rows.length?rows.map(k=>{const ded=(k.deductions||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];const pot=ded?.date||'-';return '<tr><td>'+escK(workerName(k.workerId))+'</td><td>'+escK(k.date||'-')+'</td><td>'+moneyK(k.amount)+'</td><td>'+escK(pot)+'</td><td>'+escK(k.note||'-')+'</td><td><span class="borStatus '+(remainingK(k)<=0?'paid':'')+'">'+escK(remainingK(k)<=0?'SUDAH DIPOTONG':'BELUM DIPOTONG')+'</span></td><td class="noPrint"><button class="borBtn borRed" onclick="borDeleteKasbon(\''+escK(k.id)+'\')">Hapus</button></td></tr>'}).join(''):'<tr><td colspan="7">Belum ada kasbon.</td></tr>';
+  }
+  window.borAddKasbon=function(){loadK();const wid=document.getElementById('borKasbonWorker')?.value,date=document.getElementById('borKasbonDate')?.value||today(),amount=num(document.getElementById('borKasbonAmount')?.value),note=document.getElementById('borKasbonNote')?.value.trim()||'Kasbon borongan';if(!wid){alert('Nama pekerja wajib dipilih.');return}if(amount<=0){alert('Nominal kasbon harus lebih dari 0.');return}S.kasbons.push({id:uid('K'),workerId:wid,date,amount,note,status:'BELUM DIPOTONG',remainingAmount:amount,deductions:[],createdAt:new Date().toISOString()});save();syncCash();document.getElementById('borKasbonAmount').value=0;document.getElementById('borKasbonNote').value='';renderKasbonK();borRender();alert('Kasbon tersimpan dan langsung masuk ke Kas Besar.');};
+  window.borDeleteKasbon=function(id){loadK();const k=S.kasbons.find(x=>String(x.id)===String(id));if(!k)return;if((k.deductions||[]).length){alert('Kasbon sudah dipotong melalui pembayaran. Batalkan pembayaran tersebut untuk mengembalikan kasbon.');return}if(!confirm('Hapus kasbon '+moneyK(k.amount)+' untuk '+workerName(k.workerId)+'?'))return;S.kasbons=S.kasbons.filter(x=>String(x.id)!==String(id));save();syncCash();renderKasbonK();borRender();};
+
+  function renderPickerK(){
+    loadK();const pane=document.getElementById('borPane-payment');if(!pane)return;let card=document.getElementById('borPaymentKasbonPicker');if(!card){card=document.createElement('div');card.id='borPaymentKasbonPicker';card.className='borCard';const sum=document.getElementById('borPaymentSummary')?.parentElement;card.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">💸 Pilih Kasbon yang Dipotong pada Pembayaran Ini</h3><div class="borInfo" style="margin-top:6px">Pilih satu, beberapa, atau tidak ada kasbon. Hanya kasbon yang dicentang yang masuk ke slip dan mengurangi borongan.</div></div><button type="button" class="borBtn borGray" onclick="borClearKasbonSelection()">Bersihkan Pilihan</button></div><div id="borPaymentKasbonRowsWrap" style="overflow:auto;margin-top:10px"></div>';pane.insertBefore(card,sum||null)}
+    const period=document.getElementById('borPaymentPeriod')?.value||activePeriods()[0],date=document.getElementById('borPaymentDate')?.value||today();const rows=eligibleK(date);const wrap=document.getElementById('borPaymentKasbonRowsWrap');
+    if(!rows.length){wrap.innerHTML='<div class="borInfo">Tidak ada kasbon BELUM DIPOTONG yang tanggalnya sampai tanggal bayar.</div>';return}
+    wrap.innerHTML='<table class="borTable"><thead><tr><th>✓</th><th>Nama</th><th>Tanggal Kasbon</th><th>Nominal</th><th>Sisa</th><th>Keterangan</th></tr></thead><tbody>'+rows.map(k=>'<tr><td><input type="checkbox" '+(stateK.selected.has(String(k.id))?'checked':'')+' onchange="borToggleKasbonSelection(\''+escK(k.id)+'\')"></td><td>'+escK(workerName(k.workerId))+'</td><td>'+escK(k.date)+'</td><td>'+moneyK(k.amount)+'</td><td>'+moneyK(remainingK(k))+'</td><td>'+escK(k.note||'-')+'</td></tr>').join('')+'</tbody></table>';
+  }
+  window.borToggleKasbonSelection=function(id){const key=String(id);if(stateK.selected.has(key))stateK.selected.delete(key);else stateK.selected.add(key);borPaymentPreview();};
+  window.borClearKasbonSelection=function(){stateK.selected.clear();renderPickerK();borPaymentPreview();};
+
+  function chosenBreakdownK(period,date,wid,gross){let left=Math.max(0,Number(gross)||0),out=[];for(const k of selectedForWorkerK(wid,date)){const d=Math.min(left,remainingK(k));if(d>0)out.push({k,d});left-=d;if(left<=0)break}return out;}
+  function recapSelectedK(period,date){loadK();const map={};entriesFor(period).forEach(x=>{map[x.workerId]=map[x.workerId]||{workerId:x.workerId,count:0,qty:0,total:0,kasbon:0,net:0};map[x.workerId].count++;map[x.workerId].qty+=num(x.qty);map[x.workerId].total+=entryTotal(x)});return Object.values(map).map(x=>{const items=chosenBreakdownK(period,date,x.workerId,x.total);x.items=items;x.kasbon=items.reduce((s,z)=>s+z.d,0);x.net=Math.max(0,x.total-x.kasbon);return x});}
+  window.borPaymentPreview=function(){loadK();const p=document.getElementById('borPaymentPeriod')?.value||activePeriods()[0],date=document.getElementById('borPaymentDate')?.value||today(),rows=recapSelectedK(p,date),total=rows.reduce((s,x)=>s+x.total,0),kb=rows.reduce((s,x)=>s+x.kasbon,0),net=rows.reduce((s,x)=>s+x.net,0);const elp=document.getElementById('borPaymentSummary');if(elp)elp.innerHTML='<div class="borGrid"><div class="borMetric borCard"><small>Periode</small><b>'+escK(periodLabel(p))+'</b></div><div class="borMetric borCard"><small>Tanggal Bayar</small><b>'+escK(date)+'</b></div><div class="borMetric borCard"><small>Borongan Kotor</small><b>'+moneyK(total)+'</b></div><div class="borMetric borCard"><small>Kasbon Dipotong</small><b>'+moneyK(kb)+'</b></div></div><div class="borCard borInfo" style="margin-bottom:10px"><b>Borongan Bersih = '+moneyK(net)+'</b> &nbsp; (Borongan Kotor '+moneyK(total)+' − Kasbon '+moneyK(kb)+')</div><div style="overflow:auto"><table class="borTable"><thead><tr><th>Pekerja</th><th>Borongan Kotor</th><th>Kasbon</th><th>Bersih</th><th>Terbayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+(rows.length?rows.map(x=>{const paid=paidFor(p,x.workerId),due=Math.max(0,x.net-paid),st=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';return '<tr><td>'+escK(workerName(x.workerId))+'</td><td>'+moneyK(x.total)+'</td><td>- '+moneyK(x.kasbon)+'</td><td><b>'+moneyK(x.net)+'</b></td><td>'+moneyK(paid)+'</td><td>'+moneyK(due)+'</td><td>'+escK(st)+'</td></tr>'}).join(''):'<tr><td colspan="7">Belum ada data.</td></tr>')+'</tbody></table></div>';renderPickerK();};
+  window.borProcessPayment=function(){loadK();const period=document.getElementById('borPaymentPeriod').value,date=document.getElementById('borPaymentDate').value,method=document.getElementById('borPaymentMethod').value,note=document.getElementById('borPaymentNote').value.trim();if(!date){alert('Tanggal pembayaran wajib dipilih.');return}const rows=recapSelectedK(period,date).map(x=>({...x,outstanding:Math.max(0,x.net-paidFor(period,x.workerId))})).filter(x=>x.outstanding>0);if(!rows.length){alert('Tidak ada nominal yang harus dibayar.');return}if(!confirm('Proses pembayaran '+rows.length+' pekerja untuk '+periodLabel(period)+' tanggal '+date+'? Kasbon yang dicentang akan dipotong.'))return;rows.forEach(x=>{const pid=uid('P');const breakdown=x.items.map(z=>({kasbonId:z.k.id,amount:z.d}));S.payments.push({id:pid,period,workerId:x.workerId,paymentDate:date,method,note,amount:x.outstanding,status:'DIBAYAR',kasbonIds:breakdown.map(z=>z.kasbonId),kasbonBreakdown:breakdown,processedAt:new Date().toISOString()});x.items.forEach(z=>{const k=z.k;k.deductions=Array.isArray(k.deductions)?k.deductions:[];k.deductions.push({paymentId:pid,period,date,amount:z.d});k.remainingAmount=Math.max(0,remainingK(k)-z.d);k.status=k.remainingAmount<=0?'SUDAH DIPOTONG':'BELUM DIPOTONG'});});save();syncCash();stateK.selected.clear();renderKasbonK();borRender();borPaymentPreview();alert('Pembayaran borongan berhasil diproses. Kasbon yang dipilih masuk ke slip dan mengurangi borongan.');};
+  window.borCancelPayment=function(id){if(!confirm('Batalkan pembayaran ini? Potongan kasbon pada pembayaran ini akan dikembalikan.'))return;loadK();const p=S.payments.find(x=>String(x.id)===String(id));if(!p)return;(p.kasbonBreakdown||[]).forEach(b=>{const k=S.kasbons.find(x=>String(x.id)===String(b.kasbonId));if(k){k.remainingAmount=remainingK(k)+Number(b.amount||0);k.status='BELUM DIPOTONG';k.deductions=(k.deductions||[]).filter(d=>String(d.paymentId)!==String(p.id));}});p.status='DIBATALKAN';p.cancelledAt=new Date().toISOString();save();syncCash();renderKasbonK();borRender();borPaymentPreview();};
+
+  window.borRenderSlip=function(){loadK();const p=document.getElementById('borSlipPeriod')?.value||activePeriods()[0],wid=document.getElementById('borSlipWorker')?.value,rows=entriesFor(p,wid),total=rows.reduce((s,x)=>s+entryTotal(x),0),pays=paymentsFor(p,wid),pay=pays.slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate)))[0];const deductions=[];pays.forEach(pp=>(pp.kasbonBreakdown||[]).forEach(b=>{const k=S.kasbons.find(x=>String(x.id)===String(b.kasbonId));if(k)deductions.push({k,amount:Number(b.amount)||0,date:pp.paymentDate})}));const kb=deductions.reduce((s,x)=>s+x.amount,0),net=Math.max(0,total-kb),paid=paidFor(p,wid),due=Math.max(0,net-paid),st=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';const area=document.getElementById('borSlipArea');if(!area)return;area.innerHTML='<div class="borSlipHead"><div><h2>BERKAH MULIA ADV</h2><div>SLIP PEMBAYARAN BORONGAN</div></div><div style="text-align:right"><b>'+escK(periodLabel(p))+'</b><br><small>Tanggal Bayar: '+escK(pay?.paymentDate||'-')+'</small></div></div><table class="borTable"><tbody><tr><td>Nama Pekerja</td><td><b>'+escK(workerName(wid))+'</b></td></tr><tr><td>Status</td><td><span class="borStatus '+(due===0&&net>0?'paid':'')+'">'+escK(st)+'</span></td></tr><tr><td>Metode</td><td>'+escK(pay?.method||'-')+'</td></tr><tr><td>Borongan Kotor</td><td>'+moneyK(total)+'</td></tr><tr><td>Kasbon Dipotong</td><td>- '+moneyK(kb)+'</td></tr><tr><td>Borongan Bersih</td><td><b>'+moneyK(net)+'</b></td></tr><tr><td>Sudah Dibayar</td><td>'+moneyK(paid)+'</td></tr><tr><td>Sisa</td><td>'+moneyK(due)+'</td></tr></tbody></table><div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th></tr></thead><tbody>'+(rows.length?rows.map(x=>'<tr><td>'+escK(x.date)+'</td><td>'+escK(x.description)+'</td><td>'+x.qty+'</td><td>'+escK(x.unit||'-')+'</td><td>'+moneyK(x.rate)+'</td><td>'+moneyK(entryTotal(x))+'</td></tr>').join(''):'<tr><td colspan="6">Belum ada rincian.</td></tr>')+'</tbody></table></div>'+(deductions.length?'<div style="margin-top:15px"><h3>Rincian Kasbon Dipotong</h3><table class="borTable"><thead><tr><th>Tanggal Kasbon</th><th>Kasbon</th><th>Tanggal Pemotongan</th><th>Potongan</th></tr></thead><tbody>'+deductions.map(x=>'<tr><td>'+escK(x.k.date)+'</td><td>'+escK(x.k.note||'-')+'</td><td>'+escK(x.date)+'</td><td>- '+moneyK(x.amount)+'</td></tr>').join('')+'</tbody></table></div>':'')+'<div class="borSlipTotal"><span>BORONGAN BERSIH</span><span>'+moneyK(net)+'</span></div><div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+escK(workerName(wid))+'</b></div></div>';};
+
+  // Make the worker dropdown robust and refresh only when the borongan UI is rendered.
+  const oldFill=window.borFillSlipWorkers;window.borFillSlipWorkers=function(){loadK();const p=document.getElementById('borSlipPeriod')?.value||activePeriods()[0],sel=document.getElementById('borSlipWorker');if(!sel)return;const ids=[...new Set(entriesFor(p).map(x=>x.workerId))],old=sel.value;sel.innerHTML=ids.map(id=>'<option value="'+escK(id)+'">'+escK(workerName(id))+'</option>').join('');sel.value=ids.includes(old)?old:(ids[0]||'');if(typeof borRenderSlip==='function')borRenderSlip();};
+  const oldRender=window.borRender;window.borRender=function(){if(typeof oldRender==='function')oldRender();renderKasbonK();renderPickerK();};
+  const oldOpen=window.borOpenPane;window.borOpenPane=function(name,btn){if(typeof oldOpen==='function')oldOpen(name,btn);if(name==='kasbon')renderKasbonK();if(name==='payment'){renderPickerK();borPaymentPreview()}if(name==='slip'){try{borFillSlipWorkers()}catch(e){}}};
+  window.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{loadK();renderKasbonK();renderPickerK();},500));
+})();
+</script>
 </body></html>`);
    w.document.close();
  }
@@ -3648,436 +3702,5 @@ window.addEventListener('portalDataChanged',()=>setTimeout(()=>window.atRenderAl
 </script>
 <!-- ===== END BERKAH MULIA ERP V4 ADD-ON ===== -->
 
-
-<script id="borongan-kasbon-correction-v4">
-(function(){
-  'use strict';
-  if(window.__BOR_KASBON_CORRECTION_V4__) return;
-  window.__BOR_KASBON_CORRECTION_V4__=true;
-
-  const q=id=>document.getElementById(id);
-  const esc2=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const money2=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(v)||0);
-  const today2=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-  const parse2=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(+m[1],+m[2]-1,+m[3]):null};
-  const periodEnd=p=>{
-    const raw=String(p||'');
-    if(/^W:\d{4}-\d{2}-\d{2}$/.test(raw)){const d=parse2(raw.slice(2));d.setDate(d.getDate()+5);return d.toISOString().slice(0,10)}
-    if(/^\d{4}-\d{2}$/.test(raw)){const [y,m]=raw.split('-').map(Number);return new Date(y,m,0).toISOString().slice(0,10)}
-    return today2();
-  };
-  const load2=()=>{try{load()}catch(e){console.error(e)}};
-  const save2=()=>{try{save()}catch(e){console.error(e)}};
-
-  function selectedIds(){ return new Set((window.__BOR_SELECTED_KASBON_IDS__||[]).map(String)); }
-  function setSelected(ids){ window.__BOR_SELECTED_KASBON_IDS__=[...new Set(ids.map(String))]; }
-
-  function eligibleForPayment(date){
-    load2();
-    return (S.kasbons||[]).filter(k=>String(k.status||'')!=='DIBATALKAN' && Number(k.remainingAmount ?? k.amount)>0 && String(k.date||'')<=String(date||today2()));
-  }
-  function remaining2(k){
-    if(k.remainingAmount!==undefined) return Math.max(0,Number(k.remainingAmount)||0);
-    return Math.max(0,(Number(k.amount)||0)-(k.deductions||[]).reduce((s,d)=>s+(Number(d.amount)||0),0));
-  }
-  function latestDeductionDate(k){
-    const ds=Array.isArray(k.deductions)?k.deductions:[];
-    if(!ds.length) return '-';
-    return ds.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))[0].date||'-';
-  }
-  function workerOptions(select, selected){
-    if(!select) return;
-    load2();
-    const workers=(S.workers||[]).filter(w=>w.status==='AKTIF');
-    const old=selected ?? select.value;
-    select.innerHTML='<option value="">Pilih nama</option>'+workers.map(w=>'<option value="'+esc2(w.id)+'">'+esc2(w.name)+'</option>').join('');
-    if(workers.some(w=>String(w.id)===String(old))) select.value=old;
-  }
-
-  function moveKasbonToOwnTab(){
-    const tabs=document.querySelector('.borTabs');
-    const payment=document.getElementById('borPane-payment');
-    if(!tabs||!payment) return false;
-    let tab=document.querySelector('.borTab[data-borpane="kasbon"]');
-    if(!tab){
-      tab=document.createElement('button');
-      tab.className='borTab'; tab.dataset.borpane='kasbon';
-      tab.textContent='💸 Kasbon';
-      tab.setAttribute('onclick',"borOpenPane('kasbon',this)");
-      const slip=tabs.querySelector('.borTab[data-borpane="slip"]');
-      tabs.insertBefore(tab,slip||null);
-    }
-    let pane=document.getElementById('borPane-kasbon');
-    if(!pane){
-      pane=document.createElement('div'); pane.id='borPane-kasbon'; pane.className='borPane';
-      pane.innerHTML=`<div class="borCard">
-        <h3>💸 Kasbon Borongan</h3>
-        <div class="borInfo">Catat kasbon berdasarkan <b>Tanggal Kasbon</b>. <b>Tanggal Pemotongan</b> diisi otomatis saat kasbon dipilih pada pembayaran borongan mingguan. Kasbon langsung masuk ke Kas Besar ketika dicatat.</div>
-        <div class="borForm" style="margin-top:12px">
-          <div class="borField"><label>Nama</label><select id="borKasbonWorker"></select></div>
-          <div class="borField"><label>Tanggal Kasbon</label><input id="borKasbonDate" type="date"></div>
-          <div class="borField"><label>Nominal</label><input id="borKasbonAmount" type="number" min="0" value="0"></div>
-          <div class="borField"><label>Tanggal Pemotongan</label><input id="borKasbonDeductionDate" type="date" disabled placeholder="Otomatis saat dipotong"></div>
-          <div class="borField"><label>Status Potongan</label><input id="borKasbonStatus" value="BELUM DIPOTONG" disabled></div>
-          <div class="borField" style="grid-column:span 2"><label>Keterangan</label><input id="borKasbonNote" placeholder="Contoh: uang muka / pinjaman pribadi"></div>
-        </div>
-        <div class="borActions" style="margin-top:10px"><button class="borBtn borOrange" onclick="borAddKasbon()">+ Simpan Kasbon</button></div>
-      </div>
-      <div class="borCard"><h3>Daftar Kasbon</h3><div style="overflow:auto"><table class="borTable"><thead><tr><th>Nama</th><th>Tanggal Kasbon</th><th>Nominal</th><th>Tanggal Pemotongan</th><th>Keterangan</th><th>Status</th><th class="noPrint">Aksi</th></tr></thead><tbody id="borKasbonRows"></tbody></table></div></div>`;
-      payment.parentNode.insertBefore(pane,payment.nextSibling);
-    }
-    const oldCard=payment.querySelector('.borPaymentKasbonGrid > .borCard:nth-child(2)');
-    if(oldCard) oldCard.remove();
-    const grid=payment.querySelector('.borPaymentKasbonGrid');
-    if(grid){ const first=grid.querySelector('.borCard'); if(first) payment.insertBefore(first,grid); grid.remove(); }
-    workerOptions(q('borKasbonWorker'));
-    if(q('borKasbonDate')&&!q('borKasbonDate').value) q('borKasbonDate').value=today2();
-    renderKasbonPane();
-    return true;
-  }
-
-  function renderKasbonPane(){
-    load2();
-    workerOptions(q('borKasbonWorker'));
-    if(q('borKasbonDate')&&!q('borKasbonDate').value) q('borKasbonDate').value=today2();
-    const rows=(S.kasbons||[]).filter(k=>k.status!=='DIBATALKAN').slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-    const tbody=q('borKasbonRows'); if(!tbody)return;
-    tbody.innerHTML=rows.length?rows.map(k=>{
-      const rem=remaining2(k), status=rem<=0?'SUDAH DIPOTONG':'BELUM DIPOTONG';
-      const d=latestDeductionDate(k);
-      return '<tr><td>'+esc2(workerName(k.workerId))+'</td><td>'+esc2(k.date||'-')+'</td><td>'+money2(k.amount)+'</td><td>'+esc2(d)+'</td><td>'+esc2(k.note||'-')+'</td><td><span class="borStatus '+(status==='SUDAH DIPOTONG'?'paid':'')+'">'+status+'</span></td><td class="noPrint"><button class="borBtn borRed" onclick="borDeleteKasbon(\''+k.id+'\')">Hapus</button></td></tr>';
-    }).join(''):'<tr><td colspan="7">Belum ada kasbon.</td></tr>';
-  }
-
-  function renderPaymentKasbonPicker(){
-    load2();
-    const period=q('borPaymentPeriod')?.value || activePeriods()[0];
-    const date=q('borPaymentDate')?.value || periodEnd(period);
-    const tbody=q('borPaymentKasbonRows'); if(!tbody)return;
-    const eligible=eligibleForPayment(date);
-    const ids=selectedIds();
-    const valid=new Set(eligible.map(k=>String(k.id)));
-    setSelected([...ids].filter(id=>valid.has(id)));
-    const selected=selectedIds();
-    q('borKasbonSelectAll') && (q('borKasbonSelectAll').checked=eligible.length>0 && eligible.every(k=>selected.has(String(k.id))));
-    tbody.innerHTML=eligible.length?eligible.map(k=>{
-      const checked=selected.has(String(k.id));
-      const rem=remaining2(k);
-      return '<tr><td><input type="checkbox" class="borKasbonPick" data-id="'+esc2(k.id)+'" '+(checked?'checked':'')+'></td><td>'+esc2(workerName(k.workerId))+'</td><td>'+esc2(k.date||'-')+'</td><td>'+money2(rem)+'</td><td>'+esc2(k.note||'-')+'</td><td><span class="borStatus">BELUM DIPOTONG</span></td></tr>';
-    }).join(''):'<tr><td colspan="6">Tidak ada kasbon BELUM DIPOTONG sampai tanggal pembayaran.</td></tr>';
-    tbody.querySelectorAll('.borKasbonPick').forEach(cb=>cb.addEventListener('change',()=>{
-      const ids=[...document.querySelectorAll('.borKasbonPick:checked')].map(x=>x.dataset.id);setSelected(ids);borPaymentPreview();
-    }));
-    const all=q('borKasbonSelectAll'); if(all){ all.onchange=()=>{setSelected(all.checked?eligible.map(k=>k.id):[]);renderPaymentKasbonPicker();borPaymentPreview()}; }
-  }
-
-  function selectedDeductionByWorker(period,date,rows){
-    load2();
-    const chosen=selectedIds();
-    const by={};
-    rows.forEach(r=>by[r.workerId]={gross:r.total,kasbon:0,items:[]});
-    eligibleForPayment(date).filter(k=>chosen.has(String(k.id))).sort((a,b)=>String(a.date).localeCompare(String(b.date))).forEach(k=>{
-      if(!by[k.workerId]) return;
-      const left=Math.max(0,by[k.workerId].gross-by[k.workerId].kasbon);
-      const d=Math.min(left,remaining2(k));
-      if(d>0){by[k.workerId].kasbon+=d;by[k.workerId].items.push({k,d});}
-    });
-    return by;
-  }
-
-  window.borPaymentPreview=function(){
-    load2();
-    const p=q('borPaymentPeriod')?.value||activePeriods()[0];
-    if(q('borPaymentDate')&&!q('borPaymentDate').value) q('borPaymentDate').value=periodEnd(p);
-    const date=q('borPaymentDate')?.value||periodEnd(p);
-    renderPaymentKasbonPicker();
-    const rows=recap(p), by=selectedDeductionByWorker(p,date,rows);
-    const total=rows.reduce((s,x)=>s+x.total,0), kasbon=rows.reduce((s,x)=>s+(by[x.workerId]?.kasbon||0),0), net=rows.reduce((s,x)=>s+Math.max(0,x.total-(by[x.workerId]?.kasbon||0)),0);
-    const box=q('borPaymentSummary'); if(!box)return;
-    box.innerHTML='<div class="borGrid"><div class="borMetric borCard"><small>Periode</small><b>'+esc2(periodLabel(p))+'</b></div><div class="borMetric borCard"><small>Tanggal Bayar</small><b>'+esc2(date)+'</b></div><div class="borMetric borCard"><small>Borongan Kotor</small><b>'+money2(total)+'</b></div><div class="borMetric borCard"><small>Kasbon Dipilih</small><b>'+money2(kasbon)+'</b></div></div><div class="borCard borInfo" style="margin-bottom:10px"><b>Borongan Bersih = '+money2(net)+'</b> &nbsp; (Borongan Kotor '+money2(total)+' − Kasbon '+money2(kasbon)+')</div><div style="overflow:auto"><table class="borTable"><thead><tr><th>Pekerja</th><th>Borongan Kotor</th><th>Kasbon</th><th>Borongan Bersih</th><th>Terbayar</th><th>Sisa</th><th>Status</th></tr></thead><tbody>'+ (rows.length?rows.map(x=>{const kb=by[x.workerId]?.kasbon||0,n=Math.max(0,x.total-kb),paid=paidFor(p,x.workerId),due=Math.max(0,n-paid),st=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';return '<tr><td>'+esc2(workerName(x.workerId))+'</td><td>'+money2(x.total)+'</td><td>- '+money2(kb)+'</td><td><b>'+money2(n)+'</b></td><td>'+money2(paid)+'</td><td>'+money2(due)+'</td><td><span class="borStatus '+(due===0&&n>0?'paid':'')+'">'+st+'</span></td></tr>'}).join(''):'<tr><td colspan="7">Belum ada data.</td></tr>')+'</tbody></table></div>';
-  };
-
-  window.borProcessPayment=function(){
-    load2();
-    const period=q('borPaymentPeriod').value,date=q('borPaymentDate').value,method=q('borPaymentMethod').value,note=q('borPaymentNote').value.trim();
-    if(!date){alert('Tanggal pembayaran wajib dipilih.');return}
-    const rows=recap(period), by=selectedDeductionByWorker(period,date,rows);
-    const payments=[];
-    rows.forEach(x=>{const kb=by[x.workerId]?.kasbon||0, net=Math.max(0,x.total-kb), outstanding=Math.max(0,net-paidFor(period,x.workerId));if(outstanding>0)payments.push({x,kb,net,outstanding,items:by[x.workerId]?.items||[]})});
-    if(!payments.length){alert('Tidak ada nominal yang harus dibayar. Pilih kasbon bila memang ada potongan.');return}
-    if(!confirm('Proses pembayaran '+payments.length+' pekerja untuk '+periodLabel(period)+' tanggal '+date+'? Kasbon yang dicentang akan dipotong.'))return;
-    payments.forEach(z=>{
-      const paymentId=uid('P');
-      const breakdown=z.items.map(it=>({kasbonId:it.k.id,amount:it.d}));
-      S.payments.push({id:paymentId,period,workerId:z.x.workerId,paymentDate:date,method,note,amount:z.outstanding,status:'DIBAYAR',kasbonIds:breakdown.map(x=>x.kasbonId),kasbonBreakdown:breakdown,processedAt:new Date().toISOString()});
-      z.items.forEach(it=>{
-        const k=it.k; const d=it.d;
-        k.deductions=Array.isArray(k.deductions)?k.deductions:[];
-        k.deductions.push({paymentId,period,date,amount:d});
-        k.remainingAmount=Math.max(0,remaining2(k)-d);
-        k.status=k.remainingAmount<=0?'SUDAH DIPOTONG':'BELUM DIPOTONG';
-      });
-    });
-    save2();syncCash();setSelected([]);renderKasbonPane();borPaymentPreview();borRender();
-    alert('Pembayaran borongan berhasil diproses. Hanya kasbon yang dipilih yang dipotong dan masuk ke slip pembayaran.');
-  };
-
-  window.borRenderSlip=function(){
-    load2();
-    const p=q('borSlipPeriod')?.value||activePeriods()[0],wid=q('borSlipWorker')?.value;
-    const rows=entriesFor(p,wid), total=rows.reduce((s,x)=>s+entryTotal(x),0);
-    const pays=paymentsFor(p,wid), pay=pays.slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate)))[0];
-    const deductions=[];
-    pays.forEach(pp=>{
-      if(Array.isArray(pp.kasbonBreakdown)&&pp.kasbonBreakdown.length){
-        pp.kasbonBreakdown.forEach(b=>{
-          const k=(S.kasbons||[]).find(x=>String(x.id)===String(b.kasbonId));
-          if(k) deductions.push({k,amount:Number(b.amount)||0,date:pp.paymentDate});
-        });
-      }else{
-        // Compatibility with payments created by the previous kasbon engine.
-        (S.kasbons||[]).forEach(k=>{
-          (k.deductions||[]).filter(d=>String(d.paymentId)===String(pp.id)).forEach(d=>{
-            deductions.push({k,amount:Number(d.amount)||0,date:d.date||pp.paymentDate});
-          });
-        });
-      }
-    });
-    const kasbon=deductions.reduce((s,x)=>s+x.amount,0), net=Math.max(0,total-kasbon),paid=paidFor(p,wid),due=Math.max(0,net-paid),status=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';
-    const area=q('borSlipArea');if(!area)return;
-    area.innerHTML='<div class="borSlipHead"><div><h2>BERKAH MULIA ADV</h2><div>SLIP PEMBAYARAN BORONGAN</div></div><div style="text-align:right"><b>'+esc2(periodLabel(p))+'</b><br><small>Tanggal Bayar: '+esc2(pay?.paymentDate||'-')+'</small></div></div>'+ 
-      '<table class="borTable"><tbody><tr><td>Nama Pekerja</td><td><b>'+esc2(workerName(wid))+'</b></td></tr><tr><td>Status</td><td><span class="borStatus '+(due===0&&net>0?'paid':'')+'">'+status+'</span></td></tr><tr><td>Borongan Kotor</td><td>'+money2(total)+'</td></tr><tr><td>Kasbon Dipotong</td><td>- '+money2(kasbon)+'</td></tr><tr><td>Borongan Bersih</td><td><b>'+money2(net)+'</b></td></tr><tr><td>Sudah Dibayar</td><td>'+money2(paid)+'</td></tr><tr><td>Sisa</td><td>'+money2(due)+'</td></tr></tbody></table>'+ 
-      '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th></tr></thead><tbody>'+(rows.length?rows.map(x=>'<tr><td>'+esc2(x.date)+'</td><td>'+esc2(x.description)+'</td><td>'+x.qty+'</td><td>'+esc2(x.unit||'-')+'</td><td>'+money2(x.rate)+'</td><td>'+money2(entryTotal(x))+'</td></tr>').join(''):'<tr><td colspan="6">Belum ada rincian.</td></tr>')+'</tbody></table></div>'+ 
-      '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal Kasbon</th><th>Keterangan</th><th>Tanggal Pemotongan</th><th>Potongan</th></tr></thead><tbody>'+(deductions.length?deductions.map(x=>'<tr><td>'+esc2(x.k.date||'-')+'</td><td>'+esc2(x.k.note||'-')+'</td><td>'+esc2(x.date||'-')+'</td><td>- '+money2(x.amount)+'</td></tr>').join(''):'<tr><td colspan="4">Tidak ada kasbon yang dipotong pada slip ini.</td></tr>')+'</tbody></table></div>'+ 
-      '<div class="borSlipTotal"><span>TOTAL BORONGAN KOTOR</span><span>'+money2(total)+'</span></div><div class="borSlipTotal" style="border-top:1px solid #cbd5e1"><span>KASBON DIPOTONG</span><span>- '+money2(kasbon)+'</span></div><div class="borSlipTotal"><span>TOTAL BORONGAN BERSIH</span><span>'+money2(net)+'</span></div><div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+esc2(workerName(wid))+'</b></div></div>';
-  };
-
-  function refreshAll(){
-    moveKasbonToOwnTab();
-    load2();
-    workerOptions(q('borKasbonWorker'));
-    if(q('borKasbonDate')&&!q('borKasbonDate').value)q('borKasbonDate').value=today2();
-    const p=q('borPaymentPeriod')?.value||activePeriods()[0];
-    if(q('borPaymentDate'))q('borPaymentDate').value=q('borPaymentDate').value||periodEnd(p);
-    renderKasbonPane();
-    renderPaymentKasbonPicker();
-    try{borPaymentPreview()}catch(e){console.error(e)}
-    try{borFillSlipWorkers();borRenderSlip()}catch(e){console.error(e)}
-  }
-
-  // Re-map existing kasbon form to the corrected fields while keeping existing data safe.
-  const oldAdd=window.borAddKasbon;
-  window.borAddKasbon=function(){
-    load2();
-    const workerId=q('borKasbonWorker')?.value,date=q('borKasbonDate')?.value||today2(),amount=Number(q('borKasbonAmount')?.value)||0,note=q('borKasbonNote')?.value.trim()||'Kasbon borongan';
-    if(!workerId){alert('Nama pekerja wajib dipilih.');return}
-    if(!date){alert('Tanggal kasbon wajib diisi.');return}
-    if(amount<=0){alert('Nominal kasbon harus lebih dari 0.');return}
-    S.kasbons=S.kasbons||[];
-    S.kasbons.push({id:uid('K'),workerId,date,amount,note,status:'BELUM DIPOTONG',remainingAmount:amount,deductions:[],createdAt:new Date().toISOString()});
-    save2();syncCash();
-    if(q('borKasbonAmount'))q('borKasbonAmount').value=0;
-    if(q('borKasbonNote'))q('borKasbonNote').value='';
-    if(q('borKasbonDeductionDate'))q('borKasbonDeductionDate').value='';
-    renderKasbonPane();renderPaymentKasbonPicker();borPaymentPreview();
-    alert('Kasbon tersimpan dan langsung masuk ke Kas Besar. Tanggal pemotongan akan diisi saat kasbon dipilih pada pembayaran mingguan.');
-  };
-
-  // Existing cancel-payment routine already restores deductions; refresh the new views after it.
-  const oldCancel=window.borCancelPayment;
-  window.borCancelPayment=function(id){
-    if(typeof oldCancel==='function') oldCancel(id);
-    setSelected([]);renderKasbonPane();renderPaymentKasbonPicker();try{borPaymentPreview();borRenderSlip()}catch(e){}
-  };
-
-  // Ensure worker select stays usable even with many workers.
-  const css=document.createElement('style');
-  css.textContent='.borForm select{min-width:0;width:100%}#borKasbonWorker,#borSlipWorker,#borPaymentPeriod{max-width:100%;overflow:auto}.borKasbonPicker{margin-top:12px}.borKasbonPicker table{min-width:780px}.borKasbonPicker td:first-child,.borKasbonPicker th:first-child{width:45px;text-align:center}.borKasbonPicker input[type=checkbox]{width:18px;height:18px;cursor:pointer}';
-  document.head.appendChild(css);
-
-  function installPicker(){
-    const payment=q('borPane-payment'); if(!payment)return;
-    if(!q('borPaymentKasbonPicker')){
-      const card=document.createElement('div');card.className='borCard borKasbonPicker';card.id='borPaymentKasbonPicker';
-      card.innerHTML='<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">💸 Pilih Kasbon yang Dipotong</h3><div class="borInfo" style="margin-top:6px">Centang satu atau beberapa kasbon. Hanya kasbon yang dicentang yang akan masuk ke potongan pembayaran dan slip.</div></div><label style="font-weight:800"><input id="borKasbonSelectAll" type="checkbox"> Pilih Semua</label></div><div style="overflow:auto;margin-top:10px"><table class="borTable"><thead><tr><th>✓</th><th>Nama</th><th>Tanggal Kasbon</th><th>Sisa Kasbon</th><th>Keterangan</th><th>Status</th></tr></thead><tbody id="borPaymentKasbonRows"></tbody></table></div>';
-      const summary=q('borPaymentSummary')?.parentElement;
-      payment.insertBefore(card,summary||null);
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{installPicker();refreshAll()}catch(e){console.error('Kasbon correction',e)}},1100));
-})();
-</script>
 </body>
 </html>
-
-<script id="borongan-kasbon-final-v5">
-(function(){
-  'use strict';
-  if(window.__BOR_KASBON_FINAL_V5__) return;
-  window.__BOR_KASBON_FINAL_V5__=true;
-  const $=id=>document.getElementById(id);
-  const E=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const M=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(v)||0);
-  const T=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-  function loadV(){try{load()}catch(e){console.error(e)};S.workers=Array.isArray(S.workers)?S.workers:[];S.entries=Array.isArray(S.entries)?S.entries:[];S.payments=Array.isArray(S.payments)?S.payments:[];S.kasbons=Array.isArray(S.kasbons)?S.kasbons:[]}
-  function workerList(){
-    loadV();
-    // Do not depend on exact casing/format of the status. Only an explicit NONAKTIF is excluded.
-    return S.workers.filter(w=>String(w.status||'').trim().toUpperCase()!=='NONAKTIF');
-  }
-  function fillWorkerSelect(sel, preferred){
-    if(!sel)return;
-    const old=preferred!=null?preferred:sel.value;
-    const ws=workerList();
-    sel.innerHTML='<option value="">Pilih nama</option>'+ws.map(w=>'<option value="'+E(w.id)+'">'+E(w.name||'Tanpa Nama')+'</option>').join('');
-    if(ws.some(w=>String(w.id)===String(old))) sel.value=old;
-  }
-  function kasbonRemaining(k){
-    const deductions=Array.isArray(k.deductions)?k.deductions:[];
-    if(k.remainingAmount!=null) return Math.max(0,Number(k.remainingAmount)||0);
-    return Math.max(0,(Number(k.amount)||0)-deductions.reduce((s,d)=>s+(Number(d.amount)||0),0));
-  }
-  function chosenKasbonForSlip(period,wid){
-    loadV(); const out=[];
-    S.payments.filter(p=>p.period===period&&p.workerId===wid&&p.status==='DIBAYAR').forEach(p=>{
-      if(Array.isArray(p.kasbonBreakdown)&&p.kasbonBreakdown.length){
-        p.kasbonBreakdown.forEach(b=>{const k=S.kasbons.find(x=>String(x.id)===String(b.kasbonId));if(k)out.push({k,amount:Number(b.amount)||0,date:p.paymentDate})});
-      }else{
-        S.kasbons.forEach(k=>(k.deductions||[]).filter(d=>String(d.paymentId)===String(p.id)).forEach(d=>out.push({k,amount:Number(d.amount)||0,date:d.date||p.paymentDate})));
-      }
-    });
-    return out;
-  }
-  window.borFillSlipWorkers=function(){
-    loadV();
-    const p=$('borSlipPeriod')?.value||activePeriods()[0], sel=$('borSlipWorker'); if(!sel)return;
-    const ids=[...new Set(entriesFor(p).map(x=>x.workerId))];
-    const preferred=sel.value;
-    // Keep the original slip behavior (workers from the selected period), but fall back to all workers
-    // so an existing payment/slip is never rendered as an empty selector.
-    const list=ids.length?ids:workerList().map(w=>w.id);
-    sel.innerHTML=list.map(id=>'<option value="'+E(id)+'">'+E(workerName(id))+'</option>').join('');
-    sel.value=list.some(id=>String(id)===String(preferred))?preferred:(list[0]||'');
-  };
-  window.borRenderSlip=function(){
-    loadV();
-    const p=$('borSlipPeriod')?.value||activePeriods()[0], wid=$('borSlipWorker')?.value;
-    const rows=entriesFor(p,wid), total=rows.reduce((s,x)=>s+entryTotal(x),0);
-    const pays=paymentsFor(p,wid).slice().sort((a,b)=>String(b.paymentDate||'').localeCompare(String(a.paymentDate||'')));
-    const pay=pays[0];
-    const deductions=chosenKasbonForSlip(p,wid);
-    const kasbon=deductions.reduce((s,x)=>s+x.amount,0);
-    const net=Math.max(0,total-kasbon);
-    const paid=paidFor(p,wid);
-    const due=Math.max(0,net-paid);
-    const status=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';
-    const area=$('borSlipArea'); if(!area)return;
-    area.innerHTML=
-      '<div class="borSlipHead"><div><h2>BERKAH MULIA ADV</h2><div>SLIP PEMBAYARAN BORONGAN</div></div><div style="text-align:right"><b>'+E(periodLabel(p))+'</b><br><small>Tanggal Bayar: '+E(pay?.paymentDate||'Belum dibayar')+'</small></div></div>'+ 
-      '<table class="borTable"><tbody>'+ 
-      '<tr><td>Nama Pekerja</td><td><b>'+E(workerName(wid))+'</b></td></tr>'+ 
-      '<tr><td>Status</td><td><span class="borStatus '+(due===0&&net>0?'paid':'')+'">'+status+'</span></td></tr>'+ 
-      '<tr><td>Metode</td><td>'+E(pay?.method||'-')+'</td></tr>'+ 
-      '<tr><td>Borongan Kotor</td><td>'+M(total)+'</td></tr>'+ 
-      '<tr><td>Kasbon Dipotong</td><td>- '+M(kasbon)+'</td></tr>'+ 
-      '<tr><td><b>Borongan Bersih</b></td><td><b>'+M(net)+'</b></td></tr>'+ 
-      '<tr><td>Sudah Dibayar</td><td>'+M(paid)+'</td></tr>'+ 
-      '<tr><td>Sisa</td><td>'+M(due)+'</td></tr>'+ 
-      '</tbody></table>'+ 
-      '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th></tr></thead><tbody>'+ 
-      (rows.length?rows.map(x=>'<tr><td>'+E(x.date)+'</td><td>'+E(x.description)+'</td><td>'+x.qty+'</td><td>'+E(x.unit||'-')+'</td><td>'+M(x.rate)+'</td><td>'+M(entryTotal(x))+'</td></tr>').join(''):'<tr><td colspan="6">Belum ada rincian.</td></tr>')+ 
-      '</tbody></table></div>'+ 
-      '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal Kasbon</th><th>Keterangan</th><th>Tanggal Pemotongan</th><th>Potongan</th></tr></thead><tbody>'+ 
-      (deductions.length?deductions.map(x=>'<tr><td>'+E(x.k.date||'-')+'</td><td>'+E(x.k.note||'-')+'</td><td>'+E(x.date||'-')+'</td><td>- '+M(x.amount)+'</td></tr>').join(''):'<tr><td colspan="4">Tidak ada kasbon yang dipotong pada slip ini.</td></tr>')+ 
-      '</tbody></table></div>'+ 
-      '<div class="borSlipTotal"><span>TOTAL BORONGAN KOTOR</span><span>'+M(total)+'</span></div>'+ 
-      '<div class="borSlipTotal" style="border-top:1px solid #cbd5e1"><span>KASBON DIPOTONG</span><span>- '+M(kasbon)+'</span></div>'+ 
-      '<div class="borSlipTotal"><span>TOTAL BORONGAN BERSIH</span><span>'+M(net)+'</span></div>'+ 
-      '<div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+E(workerName(wid))+'</b></div></div>';
-  };
-  // Rebind the Kasbon name selector after every general render so it is never left empty.
-  const oldRender=window.borRender;
-  window.borRender=function(){
-    if(typeof oldRender==='function') oldRender();
-    loadV(); fillWorkerSelect($('borKasbonWorker'));
-    try{renderKasbonPane?.()}catch(e){}
-    try{renderPaymentKasbonPicker?.()}catch(e){}
-    try{borFillSlipWorkers();borRenderSlip()}catch(e){console.error(e)}
-  };
-  // If the correction script has already initialized before this final patch, repair immediately.
-  function repair(){
-    loadV();
-    fillWorkerSelect($('borKasbonWorker'));
-    try{borFillSlipWorkers();borRenderSlip()}catch(e){console.error(e)}
-  }
-  window.addEventListener('DOMContentLoaded',()=>setTimeout(repair,1400));
-})();
-</script>
-
-<script id="borongan-kasbon-final-v6">
-(function(){
-  'use strict';
-  if(window.__BOR_KASBON_FINAL_V6__) return;
-  window.__BOR_KASBON_FINAL_V6__=true;
-  const $=id=>document.getElementById(id);
-  const escV=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const moneyV=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(v)||0);
-  function loadV(){try{load()}catch(e){console.error(e)};S.workers=Array.isArray(S.workers)?S.workers:[];S.entries=Array.isArray(S.entries)?S.entries:[];S.payments=Array.isArray(S.payments)?S.payments:[];S.kasbons=Array.isArray(S.kasbons)?S.kasbons:[]}
-  function allWorkers(){loadV();return S.workers.slice()}
-  function setWorkerOptions(sel,prefer){
-    if(!sel)return;
-    const old=prefer!==undefined?prefer:sel.value;
-    const ws=allWorkers();
-    sel.innerHTML='<option value="">Pilih nama</option>'+ws.map(w=>'<option value="'+escV(w.id)+'">'+escV(w.name||'Tanpa Nama')+'</option>').join('');
-    if(ws.some(w=>String(w.id)===String(old))) sel.value=old;
-    else if(!old && ws.length) sel.value=String(ws[0].id);
-  }
-  function slipKasbon(period,wid){
-    loadV();const out=[];
-    S.payments.filter(p=>p.period===period&&p.workerId===wid&&p.status==='DIBAYAR').forEach(p=>{
-      if(Array.isArray(p.kasbonBreakdown)&&p.kasbonBreakdown.length){
-        p.kasbonBreakdown.forEach(b=>{const k=S.kasbons.find(x=>String(x.id)===String(b.kasbonId));if(k)out.push({k,amount:Number(b.amount)||0,date:p.paymentDate})});
-      }else{
-        S.kasbons.forEach(k=>(k.deductions||[]).filter(d=>String(d.paymentId)===String(p.id)).forEach(d=>out.push({k,amount:Number(d.amount)||0,date:d.date||p.paymentDate})));
-      }
-    });
-    return out;
-  }
-  window.borFillSlipWorkers=function(){
-    loadV();const p=$('borSlipPeriod')?.value||activePeriods()[0],sel=$('borSlipWorker');if(!sel)return;
-    const ids=[...new Set(entriesFor(p).map(x=>x.workerId))];
-    const old=sel.value;const list=ids.length?ids:allWorkers().map(w=>w.id);
-    sel.innerHTML=list.map(id=>'<option value="'+escV(id)+'">'+escV(workerName(id))+'</option>').join('');
-    sel.value=list.some(id=>String(id)===String(old))?old:(list[0]||'');
-  };
-  window.borRenderSlip=function(){
-    loadV();const p=$('borSlipPeriod')?.value||activePeriods()[0],wid=$('borSlipWorker')?.value;
-    const rows=entriesFor(p,wid),total=rows.reduce((s,x)=>s+entryTotal(x),0);
-    const pays=paymentsFor(p,wid).slice().sort((a,b)=>String(b.paymentDate||'').localeCompare(String(a.paymentDate||''))),pay=pays[0];
-    const ds=slipKasbon(p,wid),kasbon=ds.reduce((s,x)=>s+x.amount,0),net=Math.max(0,total-kasbon),paid=paidFor(p,wid),due=Math.max(0,net-paid),status=paid<=0?'BELUM DIBAYAR':due>0?'KURANG BAYAR':'DIBAYAR';
-    const area=$('borSlipArea');if(!area)return;
-    area.innerHTML='<div class="borSlipHead"><div><h2>BERKAH MULIA ADV</h2><div>SLIP PEMBAYARAN BORONGAN</div></div><div style="text-align:right"><b>'+escV(periodLabel(p))+'</b><br><small>Tanggal Bayar: '+escV(pay?.paymentDate||'Belum dibayar')+'</small></div></div>'+ 
-    '<table class="borTable"><tbody><tr><td>Nama Pekerja</td><td><b>'+escV(workerName(wid))+'</b></td></tr><tr><td>Status</td><td><span class="borStatus '+(due===0&&net>0?'paid':'')+'">'+status+'</span></td></tr><tr><td>Metode</td><td>'+escV(pay?.method||'-')+'</td></tr><tr><td>Borongan Kotor</td><td>'+moneyV(total)+'</td></tr><tr><td>Kasbon Dipotong</td><td>- '+moneyV(kasbon)+'</td></tr><tr><td><b>Borongan Bersih</b></td><td><b>'+moneyV(net)+'</b></td></tr><tr><td>Sudah Dibayar</td><td>'+moneyV(paid)+'</td></tr><tr><td>Sisa</td><td>'+moneyV(due)+'</td></tr></tbody></table>'+ 
-    '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th></tr></thead><tbody>'+(rows.length?rows.map(x=>'<tr><td>'+escV(x.date)+'</td><td>'+escV(x.description)+'</td><td>'+x.qty+'</td><td>'+escV(x.unit||'-')+'</td><td>'+moneyV(x.rate)+'</td><td>'+moneyV(entryTotal(x))+'</td></tr>').join(''):'<tr><td colspan="6">Belum ada rincian.</td></tr>')+'</tbody></table></div>'+ 
-    '<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal Kasbon</th><th>Keterangan</th><th>Tanggal Pemotongan</th><th>Potongan</th></tr></thead><tbody>'+(ds.length?ds.map(x=>'<tr><td>'+escV(x.k.date||'-')+'</td><td>'+escV(x.k.note||'-')+'</td><td>'+escV(x.date||'-')+'</td><td>- '+moneyV(x.amount)+'</td></tr>').join(''):'<tr><td colspan="4">Tidak ada kasbon yang dipotong pada slip ini.</td></tr>')+'</tbody></table></div>'+ 
-    '<div class="borSlipTotal"><span>TOTAL BORONGAN KOTOR</span><span>'+moneyV(total)+'</span></div><div class="borSlipTotal" style="border-top:1px solid #cbd5e1"><span>KASBON DIPOTONG</span><span>- '+moneyV(kasbon)+'</span></div><div class="borSlipTotal"><span>TOTAL BORONGAN BERSIH</span><span>'+moneyV(net)+'</span></div><div style="display:flex;justify-content:flex-end;margin-top:45px"><div style="text-align:center;width:220px">Penerima,<br><br><br><b>'+escV(workerName(wid))+'</b></div></div>';
-  };
-  const previousRender=window.borRender;
-  window.borRender=function(){
-    if(typeof previousRender==='function') previousRender();
-    loadV();
-    setWorkerOptions($('borKasbonWorker'));
-    try{renderKasbonPane()}catch(e){}
-    try{renderPaymentKasbonPicker()}catch(e){}
-    try{borFillSlipWorkers();borRenderSlip()}catch(e){console.error(e)}
-  };
-  function repair(){
-    loadV();
-    setWorkerOptions($('borKasbonWorker'));
-    borFillSlipWorkers();borRenderSlip();
-  }
-  window.addEventListener('DOMContentLoaded',()=>setTimeout(repair,1800));
-  setTimeout(()=>{try{repair()}catch(e){console.error(e)}},2200);
-})();
-</script>
