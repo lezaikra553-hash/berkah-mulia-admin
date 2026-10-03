@@ -3648,5 +3648,223 @@ window.addEventListener('portalDataChanged',()=>setTimeout(()=>window.atRenderAl
 </script>
 <!-- ===== END BERKAH MULIA ERP V4 ADD-ON ===== -->
 
+
+<style id="borongan-kasbon-weekly-v3">
+  .borKasbonPaneHero{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+  .borKasbonSchedule{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+  .borKasbonSchedule h3{margin:0 0 10px}
+  .borKasbonSchedule .borField select{min-height:40px}
+  .borKasbonRule{padding:11px 13px;border-radius:12px;background:#eff6ff;color:#1e40af;font-size:11px;font-weight:800;line-height:1.55}
+  .borKasbonRule.warn{background:#fef3c7;color:#92400e}
+  .borKasbonMiniGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+  .borKasbonMini{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:13px}
+  .borKasbonMini small{display:block;color:#64748b;font-weight:900;text-transform:uppercase;font-size:10px}
+  .borKasbonMini b{display:block;font-size:20px;margin-top:5px}
+  #borKasbonCardHost .borCard{margin-bottom:14px}
+  @media(max-width:900px){.borKasbonPaneHero{grid-template-columns:1fr}.borKasbonMiniGrid{grid-template-columns:1fr}}
+</style>
+<script id="borongan-kasbon-weekly-v3">
+(function(){
+'use strict';
+const SETTINGS_KEY='BM_BORONGAN_KASBON_WEEKLY_V3';
+const DAY_NAMES=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+function ksLoad(){
+  try{
+    const x=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null')||{};
+    return {cutoffDay:Number.isFinite(Number(x.cutoffDay))?Number(x.cutoffDay):6,autoDate:x.autoDate!==false};
+  }catch(e){return {cutoffDay:6,autoDate:true}}
+}
+function ksSave(s){localStorage.setItem(SETTINGS_KEY,JSON.stringify(s))}
+function ksParseDate(v){
+  if(!v)return null;
+  const p=String(v).split('-').map(Number);
+  if(p.length!==3||p.some(n=>!Number.isFinite(n)))return null;
+  const d=new Date(p[0],p[1]-1,p[2]);return Number.isNaN(d.getTime())?null:d;
+}
+function ksIso(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function ksPeriodCutoff(period,day){
+  const raw=String(period||'').replace(/^W:/,'');
+  const start=ksParseDate(raw);
+  if(!start)return '';
+  // Periode borongan adalah Senin-Sabtu. Bila hari potong diubah,
+  // cari tanggal potong pada minggu kerja yang sama.
+  const wanted=Math.max(1,Math.min(6,Number(day)||6));
+  const offset=wanted===0?5:wanted-1;
+  const d=new Date(start);d.setDate(d.getDate()+offset);
+  return ksIso(d);
+}
+function ksActivePeriod(){
+  const sel=document.getElementById('borPaymentPeriod')||document.getElementById('borPeriod');
+  return sel?.value||'';
+}
+function ksSetPaymentDate(force){
+  const input=document.getElementById('borPaymentDate');
+  if(!input)return;
+  const s=ksLoad(),p=ksActivePeriod(),cut=ksPeriodCutoff(p,s.cutoffDay);
+  if(cut && (force || s.autoDate || !input.value)) input.value=cut;
+}
+function ksMoney(n){
+  return 'Rp '+Number(n||0).toLocaleString('id-ID');
+}
+function ksGetState(){
+  try{return window.BoronganAPI?.getState?.()||null}catch(e){return null}
+}
+function ksWorkerName(state,id){
+  return state?.workers?.find(w=>w.id===id)?.name||'Tanpa Nama';
+}
+function ksEntryTotal(x){return Number(x.amount)||Number(x.qty||0)*Number(x.rate||0)}
+function ksPeriodEntries(state,p){
+  const raw=String(p||'');
+  if(/^\d{4}-\d{2}$/.test(raw)){
+    return (state?.entries||[]).filter(x=>String(x.date||'').slice(0,7)===raw && String(x.date||'')<'2026-09-14');
+  }
+  const start=ksParseDate(raw.replace(/^W:/,''));if(!start)return [];
+  const end=new Date(start);end.setDate(end.getDate()+5);
+  return (state?.entries||[]).filter(x=>{const d=ksParseDate(x.date);return d&&d>=start&&d<=end});
+}
+function ksRemaining(k){
+  if(k.remainingAmount!==undefined)return Math.max(0,Number(k.remainingAmount)||0);
+  const used=(k.deductions||[]).reduce((s,d)=>s+(Number(d.amount)||0),0);
+  return Math.max(0,(Number(k.amount)||0)-used);
+}
+function ksEstimate(){
+  const state=ksGetState(),p=ksActivePeriod(),date=document.getElementById('borPaymentDate')?.value||ksPeriodCutoff(p,ksLoad().cutoffDay);
+  if(!state)return {active:0,amount:0,rows:[]};
+  const entries=ksPeriodEntries(state,p);
+  const grossBy={};
+  entries.forEach(e=>{grossBy[e.workerId]=(grossBy[e.workerId]||0)+ksEntryTotal(e)});
+  const rows=[];
+  Object.entries(grossBy).forEach(([wid,gross])=>{
+    let left=Math.max(0,gross),cut=0;
+    const kasbons=(state.kasbons||[]).filter(k=>k.status!=='DIBATALKAN'&&k.workerId===wid&&String(k.date||'')<=String(date||'')&&ksRemaining(k)>0)
+      .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+    kasbons.forEach(k=>{
+      if(left<=0)return;
+      const d=Math.min(left,ksRemaining(k)); if(d<=0)return;
+      cut+=d;left-=d;
+    });
+    if(cut>0)rows.push({workerId:wid,gross,cut,net:gross-cut});
+  });
+  const active=(state.kasbons||[]).filter(k=>k.status!=='DIBATALKAN'&&ksRemaining(k)>0);
+  return {active:active.length,amount:rows.reduce((s,x)=>s+x.cut,0),rows,date};
+}
+function ksRender(){
+  const host=document.getElementById('borKasbonScheduleHost');
+  if(!host)return;
+  const s=ksLoad(),p=ksActivePeriod(),cut=ksPeriodCutoff(p,s.cutoffDay),e=ksEstimate();
+  host.innerHTML=
+    '<div class="borKasbonMiniGrid">'+
+      '<div class="borKasbonMini"><small>Kasbon Belum Dipotong</small><b>'+e.active+'</b></div>'+
+      '<div class="borKasbonMini"><small>Potongan Periode Aktif</small><b>'+ksMoney(e.amount)+'</b></div>'+
+      '<div class="borKasbonMini"><small>Tanggal Potong</small><b>'+((cut||'-').split('-').reverse().join('/'))+'</b></div>'+
+    '</div>'+
+    '<div class="borKasbonRule"><b>Alur:</b> kasbon dicatat pada tanggal kasbon → uang kasbon masuk Kas Besar → pada hari potong mingguan, kasbon yang tanggalnya sudah lewat/jatuh pada tanggal potong akan mengurangi <b>Rekap Borongan</b> → pekerja dibayar sebesar <b>borongan bersih</b>.</div>';
+}
+function ksInstall(){
+  const paymentBtn=document.querySelector('.borTab[data-borpane="payment"]');
+  const slipBtn=document.querySelector('.borTab[data-borpane="slip"]');
+  const paymentPane=document.getElementById('borPane-payment');
+  const slipPane=document.getElementById('borPane-slip');
+  if(!paymentBtn||!slipBtn||!paymentPane||!slipPane)return;
+  let kasBtn=document.querySelector('.borTab[data-borpane="kasbon"]');
+  if(!kasBtn){
+    kasBtn=document.createElement('button');
+    kasBtn.className='borTab';
+    kasBtn.dataset.borpane='kasbon';
+    kasBtn.textContent='💸 Kasbon';
+    paymentBtn.insertAdjacentElement('afterend',kasBtn);
+    kasBtn.addEventListener('click',function(){window.borOpenPane('kasbon',kasBtn)});
+  }
+  let pane=document.getElementById('borPane-kasbon');
+  if(!pane){
+    pane=document.createElement('div');
+    pane.id='borPane-kasbon';
+    pane.className='borPane';
+    pane.innerHTML=
+      '<div class="hero"><div><h1>Kasbon Borongan</h1><p>Kasbon dipisahkan dari proses pembayaran, tetapi otomatis mengurangi rekap borongan saat tanggal potong mingguan tiba.</p></div><div class="heroRight"><b>Potongan Mingguan</b><small id="borKasbonCutoffLabel">Sabtu</small></div></div>'+
+      '<div class="borKasbonPaneHero">'+
+        '<div class="borKasbonSchedule">'+
+          '<h3>⚙️ Pengaturan Potongan Mingguan</h3>'+
+          '<div class="borForm" style="grid-template-columns:1fr 1fr; margin-bottom:10px">'+
+            '<div class="borField"><label>Hari Potong Setiap Minggu</label><select id="borKasbonCutoffDay">'+
+              '<option value="1">Senin</option><option value="2">Selasa</option><option value="3">Rabu</option><option value="4">Kamis</option><option value="5">Jumat</option><option value="6">Sabtu</option>'+
+            '</select></div>'+
+            '<div class="borField"><label>Otomatis Isi Tanggal Bayar</label><select id="borKasbonAutoDate"><option value="1">Ya, sesuai hari potong</option><option value="0">Tidak, saya pilih manual</option></select></div>'+
+          '</div>'+
+          '<div class="borActions"><button class="borBtn borBlue" id="borKasbonSaveSchedule">Simpan Jadwal Potong</button></div>'+
+          '<div class="borKasbonRule warn" style="margin-top:10px">Contoh: bila dipilih <b>Sabtu</b>, maka setiap minggu pembayaran borongan diproses pada Sabtu dan kasbon yang belum dipotong sampai tanggal tersebut akan mengurangi rekap minggu berjalan.</div>'+
+        '</div>'+
+        '<div id="borKasbonScheduleHost"></div>'+
+      '</div>';
+    pane.appendChild(document.createElement('div'));
+    const card=document.querySelector('#borPane-payment #borKasbonWorker')?.closest('.borCard');
+    const host=document.createElement('div');host.id='borKasbonCardHost';
+    pane.appendChild(host);
+    if(card)host.appendChild(card);
+    paymentPane.parentNode.insertBefore(pane,slipPane);
+  }
+  const s=ksLoad();
+  const day=document.getElementById('borKasbonCutoffDay');
+  const auto=document.getElementById('borKasbonAutoDate');
+  if(day)day.value=String(s.cutoffDay);
+  if(auto)auto.value=s.autoDate?'1':'0';
+  document.getElementById('borKasbonCutoffLabel')?.replaceChildren(document.createTextNode(DAY_NAMES[s.cutoffDay]||'Sabtu'));
+  document.getElementById('borKasbonSaveSchedule')?.addEventListener('click',function(){
+    const ns={cutoffDay:Number(day?.value)||6,autoDate:auto?.value!=='0'};ksSave(ns);
+    ksSetPaymentDate(true);ksRender();
+    if(window.borPaymentPreview)window.borPaymentPreview();
+    alert('Jadwal potong mingguan tersimpan: '+DAY_NAMES[ns.cutoffDay]+'.');
+  },{once:true});
+  // Set tanggal pembayaran default berdasarkan periode dan hari potong.
+  const pp=document.getElementById('borPaymentPeriod');
+  if(pp&&!pp.dataset.ksBound){
+    pp.dataset.ksBound='1';
+    pp.addEventListener('change',function(){ksSetPaymentDate(false);ksRender()});
+  }
+  const pd=document.getElementById('borPaymentDate');
+  if(pd&&!pd.dataset.ksBound){
+    pd.dataset.ksBound='1';
+    pd.addEventListener('change',function(){ksRender()});
+  }
+  ksSetPaymentDate(false);
+  ksRender();
+}
+const oldBorOpenPane=window.borOpenPane;
+window.borOpenPane=function(name,btn){
+  if(name==='kasbon'){
+    document.querySelectorAll('.borPane').forEach(x=>x.classList.remove('active'));
+    document.getElementById('borPane-kasbon')?.classList.add('active');
+    document.querySelectorAll('.borTab').forEach(x=>x.classList.remove('active'));
+    btn?.classList.add('active');
+    ksRender();
+    if(window.renderKasbonUI)window.renderKasbonUI();
+    return;
+  }
+  return oldBorOpenPane?.(name,btn);
+};
+function ksWrapPaymentPreview(){
+  const old=window.borPaymentPreview;
+  if(!old||old.__ksV3)return;
+  const wrapped=function(){
+    ksSetPaymentDate(false);
+    const r=old.apply(this,arguments);
+    ksRender();
+    return r;
+  };
+  wrapped.__ksV3=true;window.borPaymentPreview=wrapped;
+}
+document.addEventListener('DOMContentLoaded',function(){
+  setTimeout(function(){
+    ksInstall();
+    ksWrapPaymentPreview();
+  },50);
+});
+if(document.readyState!=='loading'){setTimeout(function(){ksInstall();ksWrapPaymentPreview()},50)}
+})();
+</script>
+
 </body>
 </html>
