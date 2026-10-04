@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
-<head><base href="https://d16ilfvy4mv02r.cloudfront.net/workspaces/lgUErfUqj9SOADlqnOuMVcCPy7hjlivI/2e449ee7-9f57-4f74-8f7a-ef773c09472e/files/">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BERKAH MULIA ADV - ERP V3</title>
@@ -2068,6 +2068,267 @@ setTimeout(run,500);
    if(!w){alert('Popup diblokir browser. Izinkan popup lalu coba lagi.');return}
    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
    @page{size:${landscape?'A4 landscape':'A4 portrait'};margin:12mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;margin:0;font-size:12px}.ph{text-align:center;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:14px}.ph h1{font-size:18px;margin:0 0 4px}.ph h2{font-size:14px;margin:0}.ph p{font-size:10px;color:#64748b;margin:5px 0 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:6px;vertical-align:top}th{background:#f1f5f9}.hero,.card,.enterpriseCard,.bhCard{box-shadow:none!important;border:1px solid #dbe3ee!important;margin-bottom:12px!important;padding:12px!important;background:#fff!important}.enterpriseGrid,.bhGrid,.grid4{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important}.enterpriseTwo{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}button{display:none!important}.portalTop,.sidebar,.tabs,.nav,.toolbar{display:none!important}body>*{max-width:100%!important}.money{text-align:right}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}</style></head><body><div class="ph"><h1>${esc(COMPANY)}</h1><h2>${esc(title)}</h2><p>Dicetak: ${new Date().toLocaleString('id-ID')}</p></div>${clone.outerHTML}<script>window.onload=()=>{setTimeout(()=>window.print(),250)}<\/script>
+
+\n\n
+<script>
+/* MULIA SAFE FIREBASE BACKUP V1
+   Prinsip: localStorage tetap menjadi sumber data utama.
+   Firebase hanya menerima snapshot backup. Tidak ada data localStorage yang dihapus/ditimpa oleh Firebase.
+*/
+(function(){
+  'use strict';
+  const FB_CFG={
+    apiKey:'AIzaSyCZrhbD-US4tnMNTEOM44GkttcfzvtyL',
+    authDomain:'berkah-mulia.firebaseapp.com',
+    databaseURL:'https://berkah-mulia-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId:'berkah-mulia',
+    storageBucket:'berkah-mulia.firebasestorage.app',
+    messagingSenderId:'936843128698',
+    appId:'1:936843128698:web:1de517de4b836bb66770c3',
+    measurementId:'G-YGP1582TJ9'
+  };
+  const SCRIPT_BASE='https://www.gstatic.com/firebasejs/11.10.0/';
+  let readyPromise=null;
+  function load(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Gagal memuat '+src));document.head.appendChild(s)})}
+  async function ready(){
+    if(readyPromise)return readyPromise;
+    readyPromise=(async()=>{
+      if(!window.firebase) await load(SCRIPT_BASE+'firebase-app-compat.js');
+      if(!window.firebase?.database) await load(SCRIPT_BASE+'firebase-database-compat.js');
+      if(!firebase.apps.length) firebase.initializeApp(FB_CFG);
+      return firebase.database();
+    })().catch(e=>{readyPromise=null;throw e});
+    return readyPromise;
+  }
+  function safeKey(k){return String(k).replace(/[.#$\[\]\/]/g,'_')}
+  function collect(){
+    const data={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i); if(!k)continue;
+      const raw=localStorage.getItem(k);
+      try{data[safeKey(k)]=JSON.parse(raw)}catch(_){data[safeKey(k)]=raw}
+    }
+    return data;
+  }
+  async function backup(reason){
+    const db=await ready();
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    const keys=Object.keys(collect());
+    const payload={
+      schema:'MULIA_FIREBASE_SAFE_BACKUP_V1',
+      companyCode:'BERKAH',
+      companyName:'BERKAH MULIA ADV',
+      source:'localStorage-current-browser',
+      reason:reason||'manual',
+      createdAt:new Date().toISOString(),
+      page:location.href,
+      localStorageKeyCount:keys.length,
+      data:collect()
+    };
+    await db.ref('berkah-mulia/backups/'+stamp).set(payload);
+    await db.ref('berkah-mulia/meta/latestBackup').set({createdAt:payload.createdAt,reason:payload.reason,keyCount:keys.length,path:'berkah-mulia/backups/'+stamp});
+    localStorage.setItem('BM_FIREBASE_LAST_BACKUP_V1',JSON.stringify({createdAt:payload.createdAt,path:'berkah-mulia/backups/'+stamp,keyCount:keys.length}));
+    return payload;
+  }
+  async function backupOncePerDay(){
+    try{
+      const last=JSON.parse(localStorage.getItem('BM_FIREBASE_LAST_BACKUP_V1')||'null');
+      if(last?.createdAt && (Date.now()-Date.parse(last.createdAt)<23*60*60*1000)) return {skipped:true,last};
+      return await backup('automatic-daily-safe-backup');
+    }catch(e){console.warn('[Firebase Backup] Tidak berhasil, aplikasi tetap memakai localStorage.',e);return {error:e};}
+  }
+  window.MuliaFirebaseBackup={ready,backup,backupOncePerDay,getLocalSnapshot:collect,config:FB_CFG};
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>backupOncePerDay(),2500));
+})();
+</script>
+
+
+<style id="muliaRealtimeV1Style">
+#muliaRealtimeStatus{position:fixed;right:14px;bottom:14px;z-index:2147483000;padding:7px 11px;border-radius:999px;font:800 11px/1 Arial,sans-serif;box-shadow:0 5px 18px rgba(15,23,42,.16);background:#e2e8f0;color:#334155;cursor:default;user-select:none}
+#muliaRealtimeStatus.ok{background:#dcfce7;color:#166534}#muliaRealtimeStatus.sync{background:#fef3c7;color:#92400e}#muliaRealtimeStatus.err{background:#fee2e2;color:#991b1b}
+</style>
+<script id="muliaRealtimeV1">
+/* MULIA REALTIME CLOUD V1 — SAFE BRIDGE
+   - localStorage tetap menjadi cache/offline fallback.
+   - Firebase menjadi pusat sinkronisasi lintas perangkat.
+   - Tidak menghapus localStorage saat bootstrap.
+   - Perubahan disimpan per-key agar perubahan antar perangkat tidak saling menimpa seluruh database.
+   - Backup Firebase lama tetap berjalan terpisah.
+*/
+(function(){
+  'use strict';
+  const FB_CFG={
+    apiKey:'AIzaSyCZrhbD-US4tnMNTEOM44GkttcfzvtyL',
+    authDomain:'berkah-mulia.firebaseapp.com',
+    databaseURL:'https://berkah-mulia-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId:'berkah-mulia',
+    storageBucket:'berkah-mulia.firebasestorage.app',
+    messagingSenderId:'936843128698',
+    appId:'1:936843128698:web:1de517de4b836bb66770c3',
+    measurementId:'G-YGP1582TJ9'
+  };
+  const SCRIPT_BASE='https://www.gstatic.com/firebasejs/11.10.0/';
+  const ROOT='berkah-mulia/realtime-v1';
+  const DATA_PATH=ROOT+'/data';
+  const META_PATH=ROOT+'/meta';
+  const DEVICE_KEY='BM_REALTIME_DEVICE_ID_V1';
+  const INIT_KEY='BM_REALTIME_INIT_V1';
+  const EXCLUDE=/^(PORTAL_OK|BM_REALTIME_|BM_FIREBASE_LAST_BACKUP_V1)$/i;
+  const EXCLUDE_WORDS=/(^|_)(TOKEN|SECRET|PASSWORD|PRIVATE_KEY)(_|$)/i;
+  let db=null, ref=null, readyPromise=null, applyingRemote=false, booting=true, timer=null, started=false;
+  let pending=new Set(), statusEl=null;
+
+  function setStatus(kind,text){
+    if(!statusEl)return;
+    statusEl.className=kind||'';
+    statusEl.textContent=text;
+    statusEl.title='Sinkronisasi data Mulia Group';
+  }
+  function ensureStatus(){
+    if(statusEl)return;
+    statusEl=document.createElement('div');statusEl.id='muliaRealtimeStatus';statusEl.textContent='☁ Realtime: memulai';
+    (document.body||document.documentElement).appendChild(statusEl);
+  }
+  function load(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Gagal memuat '+src));document.head.appendChild(s)})}
+  function deviceId(){
+    let id=localStorage.getItem(DEVICE_KEY);
+    if(!id){id='BM-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);localStorage.setItem(DEVICE_KEY,id)}
+    return id;
+  }
+  function eligible(k){return !!k && !EXCLUDE.test(k) && !EXCLUDE_WORDS.test(k)}
+  function encodeKey(k){
+    try{return btoa(unescape(encodeURIComponent(k))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+    catch(e){return 'k_'+Array.from(String(k)).map(c=>c.charCodeAt(0).toString(16)).join('')}
+  }
+  function decodeKey(k){
+    try{let x=String(k).replace(/-/g,'+').replace(/_/g,'/');while(x.length%4)x+='=';return decodeURIComponent(escape(atob(x)))}catch(e){return ''}
+  }
+  function parseValue(raw){try{return JSON.parse(raw)}catch(e){return raw}}
+  function localEntries(){
+    const out={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);if(!eligible(k))continue;
+      const raw=localStorage.getItem(k);if(raw==null)continue;
+      out[encodeKey(k)]={key:k,value:parseValue(raw),updatedAt:new Date().toISOString(),sourceId:deviceId()};
+    }
+    return out;
+  }
+  async function ready(){
+    if(readyPromise)return readyPromise;
+    readyPromise=(async()=>{
+      if(!window.firebase)await load(SCRIPT_BASE+'firebase-app-compat.js');
+      if(!window.firebase?.database)await load(SCRIPT_BASE+'firebase-database-compat.js');
+      if(!firebase.apps.length)firebase.initializeApp(FB_CFG);
+      db=firebase.database();ref=db.ref(DATA_PATH);return db;
+    })().catch(e=>{readyPromise=null;throw e});
+    return readyPromise;
+  }
+  async function writeKey(k,raw,sourceId=deviceId()){
+    if(!eligible(k)||applyingRemote)return;
+    try{
+      await ready();
+      await ref.child(encodeKey(k)).set({key:k,value:parseValue(raw),updatedAt:new Date().toISOString(),sourceId});
+    }catch(e){console.warn('[Mulia Realtime] write failed',e);setStatus('err','☁ Realtime: offline / rules');}
+  }
+  function queueKey(k){
+    if(!eligible(k)||applyingRemote)return;
+    pending.add(k);clearTimeout(timer);timer=setTimeout(flush,350);
+  }
+  async function flush(){
+    const keys=[...pending];pending.clear();if(!keys.length||applyingRemote)return;
+    setStatus('sync','☁ Realtime: menyimpan…');
+    try{
+      await ready();
+      const updates={};const sid=deviceId();const now=new Date().toISOString();
+      keys.forEach(k=>{const raw=localStorage.getItem(k);if(raw==null)return;updates[encodeKey(k)]={key:k,value:parseValue(raw),updatedAt:now,sourceId:sid}});
+      if(Object.keys(updates).length)await ref.update(updates);
+      setStatus('ok','☁ Realtime: tersinkron');
+      localStorage.setItem('BM_REALTIME_LAST_OK_V1',now);
+    }catch(e){console.warn('[Mulia Realtime] flush failed',e);setStatus('err','☁ Realtime: gagal simpan');}
+  }
+  async function bootstrap(){
+    ensureStatus();setStatus('sync','☁ Realtime: memeriksa cloud…');
+    await ready();
+    const meta=await db.ref(META_PATH).once('value');
+    const m=meta.val()||{};
+    const snap=await ref.once('value');
+    const remote=snap.val()||{};
+    const keys=Object.keys(remote);
+    if(!m.initialized){
+      /* FIRST BOOT: current browser is the source of truth. Nothing is deleted locally. */
+      const local=localEntries();
+      const updates={};
+      Object.keys(local).forEach(k=>updates[k]=local[k]);
+      if(Object.keys(updates).length)await ref.update(updates);
+      await db.ref(META_PATH).set({initialized:true,initializedAt:new Date().toISOString(),initializedBy:deviceId(),keyCount:Object.keys(updates).length,schema:'MULIA_REALTIME_CLOUD_V1'});
+      localStorage.setItem(INIT_KEY,'cloud-initialized');
+      setStatus('ok','☁ Realtime: data lokal diamankan');
+    }else{
+      /* Existing cloud: remote values win only where a cloud record exists. Local-only keys remain untouched. */
+      applyingRemote=true;
+      try{
+        keys.forEach(id=>{
+          const row=remote[id];const k=String(row?.key||decodeKey(id));
+          if(!eligible(k)||!row||!Object.prototype.hasOwnProperty.call(row,'value'))return;
+          localStorage.setItem(k,typeof row.value==='string'?row.value:JSON.stringify(row.value));
+        });
+      }finally{applyingRemote=false}
+      localStorage.setItem(INIT_KEY,'cloud-loaded');
+      setStatus('ok','☁ Realtime: data cloud aktif');
+      setTimeout(()=>{try{window.MuliaIntegrationV3?.run();window.bhRenderSimple?.();window.renderEnterprise?.();window.repaint?.()}catch(e){}},80);
+      /* Upload local-only keys without touching cloud keys. */
+      const remoteKeys=new Set(keys);const local=localEntries();const missing={};
+      Object.entries(local).forEach(([id,row])=>{if(!remoteKeys.has(id))missing[id]=row});
+      if(Object.keys(missing).length)await ref.update(missing);
+    }
+    attachListener();
+  }
+  function attachListener(){
+    if(started)return;started=true;
+    ref.on('child_added',onRemoteChild);ref.on('child_changed',onRemoteChild);ref.on('child_removed',onRemoteRemoved);
+  }
+  function onRemoteChild(snap){
+    const row=snap.val()||{},k=String(row.key||decodeKey(snap.key)||'');
+    if(!eligible(k)||row.sourceId===deviceId()||!Object.prototype.hasOwnProperty.call(row,'value'))return;
+    applyingRemote=true;
+    try{
+      localStorage.setItem(k,typeof row.value==='string'?row.value:JSON.stringify(row.value));
+    }finally{applyingRemote=false}
+    window.dispatchEvent(new StorageEvent('storage',{key:k,newValue:localStorage.getItem(k),storageArea:localStorage}));
+    setStatus('ok','☁ Realtime: diperbarui');
+    clearTimeout(window.__MULIA_RT_RENDER_T);
+    window.__MULIA_RT_RENDER_T=setTimeout(()=>{try{window.MuliaIntegrationV3?.run();window.bhRenderSimple?.();window.renderEnterprise?.();window.repaint?.()}catch(e){}},80);
+  }
+  function onRemoteRemoved(snap){
+    const row=snap.val()||{},k=String(row.key||decodeKey(snap.key)||'');
+    /* Do not delete local financial data automatically. A cloud deletion must never erase a local record. */
+    console.warn('[Mulia Realtime] Remote delete ignored for safety:',k);
+  }
+  function patchLocalStorage(){
+    if(window.__MULIA_RT_PATCHED)return;window.__MULIA_RT_PATCHED=true;
+    const originalSet=Storage.prototype.setItem;
+    const originalRemove=Storage.prototype.removeItem;
+    Storage.prototype.setItem=function(k,v){
+      const r=originalSet.call(this,k,v);
+      if(this===localStorage && started && eligible(String(k)))queueKey(String(k));
+      return r;
+    };
+    Storage.prototype.removeItem=function(k){
+      const existed=this===localStorage && eligible(String(k)) && localStorage.getItem(k)!=null;
+      const r=originalRemove.call(this,k);
+      /* Safety: deletions are intentionally NOT propagated automatically. */
+      if(existed && started)console.info('[Mulia Realtime] local delete kept local-only:',k);
+      return r;
+    };
+  }
+  window.MuliaRealtime={ready,flush,bootstrap,deviceId,status:()=>statusEl?.textContent||'',root:ROOT};
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{
+    try{patchLocalStorage();await bootstrap();}catch(e){console.warn('[Mulia Realtime] unavailable; app remains local.',e);setStatus('err','☁ Realtime: belum terhubung');}
+    booting=false;
+  },1200));
+})();
+</script>
+
 </body></html>`);
    w.document.close();
  }
@@ -2169,7 +2430,80 @@ setTimeout(run,500);
      </div>
      ${tableClone.outerHTML}
      <script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
-</body></html>`);
+   <script>
+/* MULIA SAFE FIREBASE BACKUP V1
+   Prinsip: localStorage tetap menjadi sumber data utama.
+   Firebase hanya menerima snapshot backup. Tidak ada data localStorage yang dihapus/ditimpa oleh Firebase.
+*/
+(function(){
+  'use strict';
+  const FB_CFG={
+    apiKey:'AIzaSyCZrhbD-US4tnMNTEOM44GkttcfzvtyL',
+    authDomain:'berkah-mulia.firebaseapp.com',
+    databaseURL:'https://berkah-mulia-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId:'berkah-mulia',
+    storageBucket:'berkah-mulia.firebasestorage.app',
+    messagingSenderId:'936843128698',
+    appId:'1:936843128698:web:1de517de4b836bb66770c3',
+    measurementId:'G-YGP1582TJ9'
+  };
+  const SCRIPT_BASE='https://www.gstatic.com/firebasejs/11.10.0/';
+  let readyPromise=null;
+  function load(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Gagal memuat '+src));document.head.appendChild(s)})}
+  async function ready(){
+    if(readyPromise)return readyPromise;
+    readyPromise=(async()=>{
+      if(!window.firebase) await load(SCRIPT_BASE+'firebase-app-compat.js');
+      if(!window.firebase?.database) await load(SCRIPT_BASE+'firebase-database-compat.js');
+      if(!firebase.apps.length) firebase.initializeApp(FB_CFG);
+      return firebase.database();
+    })().catch(e=>{readyPromise=null;throw e});
+    return readyPromise;
+  }
+  function safeKey(k){return String(k).replace(/[.#$\[\]\/]/g,'_')}
+  function collect(){
+    const data={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i); if(!k)continue;
+      const raw=localStorage.getItem(k);
+      try{data[safeKey(k)]=JSON.parse(raw)}catch(_){data[safeKey(k)]=raw}
+    }
+    return data;
+  }
+  async function backup(reason){
+    const db=await ready();
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    const keys=Object.keys(collect());
+    const payload={
+      schema:'MULIA_FIREBASE_SAFE_BACKUP_V1',
+      companyCode:'BERKAH',
+      companyName:'BERKAH MULIA ADV',
+      source:'localStorage-current-browser',
+      reason:reason||'manual',
+      createdAt:new Date().toISOString(),
+      page:location.href,
+      localStorageKeyCount:keys.length,
+      data:collect()
+    };
+    await db.ref('berkah-mulia/backups/'+stamp).set(payload);
+    await db.ref('berkah-mulia/meta/latestBackup').set({createdAt:payload.createdAt,reason:payload.reason,keyCount:keys.length,path:'berkah-mulia/backups/'+stamp});
+    localStorage.setItem('BM_FIREBASE_LAST_BACKUP_V1',JSON.stringify({createdAt:payload.createdAt,path:'berkah-mulia/backups/'+stamp,keyCount:keys.length}));
+    return payload;
+  }
+  async function backupOncePerDay(){
+    try{
+      const last=JSON.parse(localStorage.getItem('BM_FIREBASE_LAST_BACKUP_V1')||'null');
+      if(last?.createdAt && (Date.now()-Date.parse(last.createdAt)<23*60*60*1000)) return {skipped:true,last};
+      return await backup('automatic-daily-safe-backup');
+    }catch(e){console.warn('[Firebase Backup] Tidak berhasil, aplikasi tetap memakai localStorage.',e);return {error:e};}
+  }
+  window.MuliaFirebaseBackup={ready,backup,backupOncePerDay,getLocalSnapshot:collect,config:FB_CFG};
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>backupOncePerDay(),2500));
+})();
+</script>
+
+</body>
+   </html>`);
    pw.document.close();
  }
 
@@ -3782,249 +4116,5 @@ $('kasImportModal')?.addEventListener('click',e=>{if(e.target===$('kasImportModa
 })();
 </script>
 
-
-<style id="muliaRealtimeV2Style">
-#muliaRealtimeStatus{position:fixed;right:14px;bottom:14px;z-index:2147483000;padding:7px 11px;border-radius:999px;font:800 11px/1 Arial,sans-serif;box-shadow:0 5px 18px rgba(15,23,42,.16);background:#e2e8f0;color:#334155;cursor:pointer;user-select:none}
-#muliaRealtimeStatus.ok{background:#dcfce7;color:#166534}#muliaRealtimeStatus.sync{background:#fef3c7;color:#92400e}#muliaRealtimeStatus.err{background:#fee2e2;color:#991b1b}
-</style>
-<script id="muliaRealtimeV2">
-/* MULIA REALTIME CLOUD V2 — SAFE CROSS-DEVICE BRIDGE
-   - localStorage = cache/offline fallback; Firebase RTDB = pusat sinkronisasi.
-   - Sinkron per-key (perubahan tidak saling menimpa seluruh database).
-   - Perubahan dari modul iframe ikut terdeteksi (storage event + polling diff).
-   - Konflik diselesaikan per-key dengan updatedAt (yang lebih baru menang).
-   - Penghapusan lokal TIDAK dipropagasi otomatis (mencegah data terhapus tak sengaja).
-   - Kunci internal bridge (BM_REALTIME_*) tidak pernah disinkronkan.
-*/
-(function(){
-  'use strict';
-  var FB_CFG={
-    apiKey:'AIzaSyCZrhbD-US4tnMNTEOM44GkttcfzvtyL',
-    authDomain:'berkah-mulia.firebaseapp.com',
-    databaseURL:'https://berkah-mulia-default-rtdb.asia-southeast1.firebasedatabase.app',
-    projectId:'berkah-mulia',
-    storageBucket:'berkah-mulia.firebasestorage.app',
-    messagingSenderId:'936843128698',
-    appId:'1:936843128698:web:1de517de4b836bb66770c3',
-    measurementId:'G-YGP1582TJ9'
-  };
-  var SCRIPT_BASE='https://www.gstatic.com/firebasejs/11.10.0/';
-  var ROOT='berkah-mulia/realtime-v1';
-  var DATA_PATH=ROOT+'/data';
-  var META_PATH=ROOT+'/meta';
-  var DEVICE_KEY='BM_REALTIME_DEVICE_ID_V1';
-  var LOCAL_META_KEY='BM_REALTIME_LOCAL_META_V1';
-  var LOCAL_ONLY=/^BM_REALTIME_/i;
-  var EXCLUDE_EXACT=/^(PORTAL_OK|BM_FIREBASE_LAST_BACKUP_V1)$/i;
-  var EXCLUDE_WORDS=/(^|_)(TOKEN|SECRET|PASSWORD|PRIVATE_KEY)(_|$)/i;
-
-  var db=null, ref=null, readyPromise=null;
-  var applyingRemote=false, started=false, booting=true;
-  var pending=Object.create(null), flushTimer=null, pollTimer=null;
-  var snapshot=Object.create(null);
-  var statusEl=null;
-
-  function setStatus(kind,text){
-    if(!statusEl)return;
-    statusEl.className=kind||'';
-    statusEl.textContent=text;
-    statusEl.title='Sinkronisasi Mulia Group — klik untuk simpan paksa';
-  }
-  function ensureStatus(){
-    if(statusEl||!document.body)return;
-    statusEl=document.createElement('div');
-    statusEl.id='muliaRealtimeStatus';
-    statusEl.textContent='\u2601 Realtime: memulai';
-    statusEl.onclick=function(){ try{MuliaRealtime.flush(true)}catch(e){} };
-    document.body.appendChild(statusEl);
-  }
-  function load(src){return new Promise(function(resolve,reject){var s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=function(){reject(new Error('Gagal memuat '+src))};document.head.appendChild(s)})}
-  function deviceId(){
-    var id=null;
-    try{id=localStorage.getItem(DEVICE_KEY)}catch(e){}
-    /* V1 sempat menyinkronkan device id antar perangkat; paksa id V2 yang unik. */
-    if(!id||!/^BM2-/.test(id)){id='BM2-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);try{localStorage.setItem(DEVICE_KEY,id)}catch(e){}}
-    return id;
-  }
-  function eligible(k){return !!k && !LOCAL_ONLY.test(k) && !EXCLUDE_EXACT.test(k) && !EXCLUDE_WORDS.test(k)}
-  function encodeKey(k){
-    try{return btoa(unescape(encodeURIComponent(k))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-    catch(e){return 'k_'+Array.from(String(k)).map(function(c){return c.charCodeAt(0).toString(16)}).join('')}
-  }
-  function decodeKey(k){
-    try{var x=String(k).replace(/-/g,'+').replace(/_/g,'/');while(x.length%4)x+='=';return decodeURIComponent(escape(atob(x)))}catch(e){return ''}
-  }
-  function parseValue(raw){try{return JSON.parse(raw)}catch(e){return raw}}
-  function localMeta(){try{return JSON.parse(localStorage.getItem(LOCAL_META_KEY)||'{}')}catch(e){return {}}}
-  function saveLocalMeta(m){try{localStorage.setItem(LOCAL_META_KEY,JSON.stringify(m))}catch(e){}}
-
-  function ready(){
-    if(readyPromise)return readyPromise;
-    readyPromise=(async function(){
-      if(!window.firebase)await load(SCRIPT_BASE+'firebase-app-compat.js');
-      if(!window.firebase||!window.firebase.database)await load(SCRIPT_BASE+'firebase-database-compat.js');
-      if(!firebase.apps.length)firebase.initializeApp(FB_CFG);
-      db=firebase.database();ref=db.ref(DATA_PATH);return db;
-    })().catch(function(e){readyPromise=null;throw e});
-    return readyPromise;
-  }
-
-  function scan(){
-    var out=Object.create(null);
-    for(var i=0;i<localStorage.length;i++){
-      var k=localStorage.key(i);
-      if(!eligible(k))continue;
-      out[k]=localStorage.getItem(k);
-    }
-    return out;
-  }
-  function queue(k){
-    if(!eligible(k)||applyingRemote)return;
-    pending[k]=true;clearTimeout(flushTimer);flushTimer=setTimeout(flush,400);
-  }
-  function queueAll(list){list.forEach(queue)}
-  function refreshSnapshot(){snapshot=scan()}
-
-  async function flush(force){
-    var keys=Object.keys(pending);pending=Object.create(null);
-    if(!keys.length&&!force)return;
-    if(!keys.length&&force)keys=Object.keys(scan());
-    if(!keys.length)return;
-    if(applyingRemote)return;
-    setStatus('sync','\u2601 Realtime: menyimpan\u2026');
-    try{
-      await ready();
-      var updates={},sid=deviceId(),now=new Date().toISOString(),meta=localMeta();
-      keys.forEach(function(k){
-        var raw=localStorage.getItem(k);if(raw==null)return;
-        updates[encodeKey(k)]={key:k,value:parseValue(raw),updatedAt:now,sourceId:sid};
-        meta[k]=now;
-      });
-      if(Object.keys(updates).length){
-        await ref.update(updates);
-        saveLocalMeta(meta);
-      }
-      refreshSnapshot();
-      setStatus('ok','\u2601 Realtime: tersinkron');
-      try{localStorage.setItem('BM_REALTIME_LAST_OK_V1',now)}catch(e){}
-    }catch(e){console.warn('[Mulia Realtime] flush gagal',e);setStatus('err','\u2601 Realtime: gagal simpan');}
-  }
-
-  async function bootstrap(){
-    ensureStatus();setStatus('sync','\u2601 Realtime: memeriksa cloud\u2026');
-    await ready();
-    var metaSnap=await db.ref(META_PATH).once('value');
-    var m=metaSnap.val()||{};
-    var snap=await ref.once('value');
-    var remote=snap.val()||{};
-    var remoteIds=Object.keys(remote);
-    var meta=localMeta();
-    var sid=deviceId();
-
-    if(!m.initialized){
-      var local=scan(),updates={},now=new Date().toISOString();
-      Object.keys(local).forEach(function(k){updates[encodeKey(k)]={key:k,value:parseValue(local[k]),updatedAt:now,sourceId:sid};meta[k]=now});
-      if(Object.keys(updates).length)await ref.update(updates);
-      await db.ref(META_PATH).set({initialized:true,initializedAt:now,initializedBy:sid,keyCount:Object.keys(updates).length,schema:'MULIA_REALTIME_CLOUD_V2'});
-      saveLocalMeta(meta);
-      setStatus('ok','\u2601 Realtime: data lokal diamankan');
-    }else{
-      applyingRemote=true;
-      try{
-        remoteIds.forEach(function(id){
-          var row=remote[id]||{},k=String(row.key||decodeKey(id)||'');
-          if(!eligible(k)||!Object.prototype.hasOwnProperty.call(row,'value'))return;
-          var localTs=Date.parse(meta[k]||0)||0;
-          var remoteTs=Date.parse(row.updatedAt||0)||0;
-          if(localTs>remoteTs)return; /* lokal lebih baru: biarkan, nanti di-push */
-          localStorage.setItem(k,typeof row.value==='string'?row.value:JSON.stringify(row.value));
-          meta[k]=row.updatedAt||new Date().toISOString();
-        });
-        saveLocalMeta(meta);
-      }finally{applyingRemote=false}
-      setStatus('ok','\u2601 Realtime: data cloud aktif');
-      /* push key lokal yang belum ada di cloud, atau yang lokal lebih baru */
-      var remoteKeySet=Object.create(null);
-      remoteIds.forEach(function(id){var row=remote[id]||{};remoteKeySet[String(row.key||decodeKey(id)||'')]=row});
-      var localAll=scan(),toPush=[];
-      Object.keys(localAll).forEach(function(k){
-        var row=remoteKeySet[k];
-        if(!row){toPush.push(k);return}
-        var localTs=Date.parse(meta[k]||0)||0, remoteTs=Date.parse(row.updatedAt||0)||0;
-        if(localTs>remoteTs)toPush.push(k);
-      });
-      if(toPush.length)queueAll(toPush);
-      setTimeout(function(){try{window.MuliaIntegrationV3&&window.MuliaIntegrationV3.run();window.bhRenderSimple&&window.bhRenderSimple();window.renderEnterprise&&window.renderEnterprise();window.repaint&&window.repaint()}catch(e){}},120);
-    }
-    refreshSnapshot();
-    attachListener();
-    startPolling();
-  }
-
-  function applyRemote(row){
-    var k=String(row.key||'');
-    if(!eligible(k)||!Object.prototype.hasOwnProperty.call(row,'value'))return;
-    if(row.sourceId===deviceId())return;
-    var meta=localMeta();
-    var localTs=Date.parse(meta[k]||0)||0;
-    var remoteTs=Date.parse(row.updatedAt||0)||0;
-    if(localTs>remoteTs){queue(k);return} /* lokal lebih baru → kirim ke cloud */
-    applyingRemote=true;
-    try{localStorage.setItem(k,typeof row.value==='string'?row.value:JSON.stringify(row.value))}
-    finally{applyingRemote=false}
-    meta[k]=row.updatedAt||new Date().toISOString();saveLocalMeta(meta);
-    snapshot[k]=localStorage.getItem(k);
-    try{window.dispatchEvent(new StorageEvent('storage',{key:k,newValue:snapshot[k],storageArea:localStorage}))}catch(e){}
-    setStatus('ok','\u2601 Realtime: diperbarui');
-    clearTimeout(window.__MULIA_RT_RENDER_T);
-    window.__MULIA_RT_RENDER_T=setTimeout(function(){try{window.MuliaIntegrationV3&&window.MuliaIntegrationV3.run();window.bhRenderSimple&&window.bhRenderSimple();window.renderEnterprise&&window.renderEnterprise();window.repaint&&window.repaint()}catch(e){}},80);
-  }
-
-  function attachListener(){
-    if(started)return;started=true;
-    var handler=function(childSnap){
-      var row=childSnap.val()||{};
-      if(!row.key)row.key=decodeKey(childSnap.key);
-      applyRemote(row);
-    };
-    ref.on('child_added',handler);
-    ref.on('child_changed',handler);
-    ref.on('child_removed',function(childSnap){
-      var row=childSnap.val()||{};
-      console.warn('[Mulia Realtime] Remote delete diabaikan (aman):',row.key||childSnap.key);
-    });
-    /* perubahan dari modul iframe / tab lain (termasuk yang tidak lewat patch setItem) */
-    window.addEventListener('storage',function(e){
-      if(e&&e.key&&eligible(e.key)){snapshot[e.key]=e.newValue;queue(e.key)}
-    });
-  }
-
-  function patchLocalStorage(){
-    if(window.__MULIA_RT2_PATCHED)return;window.__MULIA_RT2_PATCHED=true;
-    var orig=Storage.prototype.setItem;
-    Storage.prototype.setItem=function(k,v){
-      var r=orig.call(this,k,v);
-      try{if(this===localStorage&&eligible(String(k))){snapshot[String(k)]=String(v);queue(String(k))}}catch(e){}
-      return r;
-    };
-  }
-
-  function startPolling(){
-    if(pollTimer)return;
-    /* jaring pengaman: iframe punya realm sendiri, jadi patch setItem tidak menangkapnya */
-    pollTimer=setInterval(function(){
-      if(applyingRemote)return;
-      var cur=scan(),changed=[];
-      Object.keys(cur).forEach(function(k){if(snapshot[k]!==cur[k])changed.push(k)});
-      if(changed.length){refreshSnapshot();queueAll(changed)}
-    },2000);
-  }
-
-  window.MuliaRealtime={ready:ready,flush:flush,bootstrap:bootstrap,deviceId:deviceId,status:function(){return statusEl?statusEl.textContent:''},root:ROOT};
-  patchLocalStorage();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){bootstrap().catch(function(e){console.warn('[Mulia Realtime] tidak tersedia; app tetap lokal.',e);ensureStatus();setStatus('err','\u2601 Realtime: belum terhubung')}).finally(function(){booting=false})},1200)});
-  else setTimeout(function(){bootstrap().catch(function(e){console.warn('[Mulia Realtime] tidak tersedia; app tetap lokal.',e);ensureStatus();setStatus('err','\u2601 Realtime: belum terhubung')}).finally(function(){booting=false})},1200);
-})();
-</script>
 </body>
 </html>
