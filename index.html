@@ -961,22 +961,55 @@ function portalIsAuthError(message){
   return /invalid authentication|auth|unauthorized|401|access token|credential/i.test(String(message||''));
 }
 async function portalFindSyncFile(){
+  const headers=portalDriveHeaders();
+  // Prioritaskan file yang memang dibuat oleh aplikasi versi sync ini.
+  const appQ=encodeURIComponent(`appProperties has { key='berkahMuliaSync' and value='v5' } and trashed=false`);
+  const ar=await fetch(`https://www.googleapis.com/drive/v3/files?q=${appQ}&spaces=drive&fields=files(id,name,modifiedTime,size,appProperties)&pageSize=20`,{headers});
+  const aj=await ar.json().catch(()=>({}));
+  if(!ar.ok) throw new Error(aj.error?.message || 'Gagal mencari backup portal di Drive.');
+  const appFiles=(aj.files||[]).filter(f=>f.name===PORTAL_SYNC_FILE).sort((a,b)=>String(b.modifiedTime).localeCompare(String(a.modifiedTime)));
+  if(appFiles.length) return appFiles[0];
+
+  // Fallback untuk file sync lama. File ini tetap boleh dibaca/di-restore;
+  // saat ditulis dan Google menolak PATCH, portalUploadJson() akan membuat file baru.
   const q=encodeURIComponent(`name='${PORTAL_SYNC_FILE}' and trashed=false`);
-  const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime,size)&pageSize=10`,{headers:portalDriveHeaders()});
-  const j=await r.json();
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime,size,appProperties)&pageSize=20`,{headers});
+  const j=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(j.error?.message || 'Gagal mencari backup portal di Drive.');
   return (j.files||[]).sort((a,b)=>String(b.modifiedTime).localeCompare(String(a.modifiedTime)))[0] || null;
 }
 async function portalUploadJson(name,payload,existingId=null){
-  const boundary='-------BM_SYNC_'+Date.now();
-  const metadata={name,mimeType:'application/json'};
-  const body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(metadata)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify(payload)+'\r\n--'+boundary+'--';
-  const url=existingId?`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-  const method=existingId?'PATCH':'POST';
-  const r=await fetch(url,{method,headers:portalDriveHeaders({'Content-Type':'multipart/related; boundary='+boundary}),body});
-  const j=await r.json();
-  if(!r.ok) throw new Error(j.error?.message || 'Upload sinkron Drive gagal.');
-  return j;
+  const makeRequest=async(id)=>{
+    const boundary='-------BM_SYNC_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const metadata={name,mimeType:'application/json',appProperties:{berkahMuliaSync:'v5',companyCode:'BERKAH'}};
+    const body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(metadata)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+JSON.stringify(payload)+'\r\n--'+boundary+'--';
+    const url=id?`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=multipart`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const method=id?'PATCH':'POST';
+    const r=await fetch(url,{method,headers:portalDriveHeaders({'Content-Type':'multipart/related; boundary='+boundary}),body});
+    const j=await r.json().catch(()=>({}));
+    return {r,j};
+  };
+
+  // File sync lama bisa terbaca oleh drive.file tetapi belum diberi write access
+  // untuk OAuth client yang sedang dipakai. Jika PATCH ditolak Google (403),
+  // jangan gagal: buat file sync baru yang dibuat oleh aplikasi ini.
+  if(existingId){
+    const first=await makeRequest(existingId);
+    if(first.r.ok) return first.j;
+    const msg=String(first.j?.error?.message||'');
+    const reason=String(first.j?.error?.errors?.[0]?.reason||'');
+    const notWritable=/appNotAuthorizedToFile|has not granted the app|write access/i.test(msg)||reason==='appNotAuthorizedToFile';
+    if(!notWritable) throw new Error(msg || 'Upload sinkron Drive gagal.');
+
+    console.warn('File sync lama tidak writable oleh OAuth app. Membuat file sync baru.',first.j);
+    const fresh=await makeRequest(null);
+    if(!fresh.r.ok) throw new Error(fresh.j?.error?.message || 'Gagal membuat file sync baru di Google Drive.');
+    return fresh.j;
+  }
+
+  const fresh=await makeRequest(null);
+  if(!fresh.r.ok) throw new Error(fresh.j?.error?.message || 'Upload sinkron Drive gagal.');
+  return fresh.j;
 }
 async function portalDownloadSyncFile(fileId){
   const r=await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,{headers:portalDriveHeaders()});
