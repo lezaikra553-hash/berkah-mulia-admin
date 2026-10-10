@@ -2318,8 +2318,14 @@ function grossPaidFor(period,workerId){return S.payments.filter(x=>x.period===pe
 function groupWorkers(){return ['Indra','Heru'].map(n=>S.workers.find(w=>String(w.name).trim().toLowerCase()===n.toLowerCase())).filter(Boolean)}
 function paymentMode(){return el('borPaymentMode')?.value||'individual'}
 function kasbonRemaining(k){return Math.max(0,num(k.amount)-num(k.deductedAmount))}
+function sameKasbonWorker(k,workerId){
+ if(String(k.workerId)===String(workerId))return true;
+ const a=String(workerName(k.workerId)||'').trim().toLocaleLowerCase('id-ID');
+ const b=String(workerName(workerId)||'').trim().toLocaleLowerCase('id-ID');
+ return !!a && a!=='tanpa nama' && a===b;
+}
 function kasbonForPeriod(period,workerId,readyOnly=true){
- return (S.kasbons||[]).filter(k=>k.workerId===workerId&&k.status!=='DIBATALKAN'&&kasbonRemaining(k)>0&&(!readyOnly||k.selectedForPayroll===true));
+ return (S.kasbons||[]).filter(k=>sameKasbonWorker(k,workerId)&&k.status!=='DIBATALKAN'&&kasbonRemaining(k)>0&&(!readyOnly||k.selectedForPayroll===true));
 }
 function kasbonToDeduct(period,workerId,grossAvailable){
  let remaining=Math.max(0,num(grossAvailable)),total=0,items=[];
@@ -2582,7 +2588,7 @@ window.borRenderKasbon=function(){
      const checked=k.selectedForPayroll===true?' checked':'';
      action='<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"'+checked+' onchange="borToggleKasbon(\''+k.id+'\',this.checked)"> Pilih potong</label> <button class="borBtn borGray" onclick="borCancelKasbon(\''+k.id+'\')">Batalkan</button>';
    }
-   return '<tr><td>'+(i+1)+'</td><td><b>'+esc(workerName(k.workerId))+'</b></td><td>'+esc(k.date)+'</td><td>'+money(k.amount)+(rem!==num(k.amount)?'<br><small>Sisa '+money(rem)+'</small>':'')+'</td><td>'+esc(k.need||'-')+'</td><td>'+action+'</td><td><span class="borStatus '+(k.status==='TERPOTONG'?'paid':'')+'">'+esc(status)+'</span></td></tr>';
+   return '<tr><td>'+(i+1)+'</td><td><b>'+esc(workerName(k.workerId))+'</b></td><td>'+esc(k.date)+'</td><td>'+money(k.amount)+(rem!==num(k.amount)?'<br><small>Sisa '+money(rem)+'</small>':'')+'</td><td>'+esc(k.need||'-')+'</td><td>'+action+'</td><td><span class="borStatus '+(['TERPOTONG','TERPOTONG SEBAGIAN'].includes(k.status)?'paid':'')+'">'+esc(status)+'</span></td></tr>';
  }).join(''):'<tr><td colspan="7">Belum ada kasbon.</td></tr>';
 };
 window.borPaymentPreview=function(){
