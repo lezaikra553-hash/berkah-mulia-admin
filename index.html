@@ -337,6 +337,7 @@
       <div class="borInfo borWarn">Tanggal pembayaran tidak dibuat otomatis. Pilih tanggal saat pembayaran benar-benar diproses, seperti proses payroll.</div>
       <div class="borForm" style="margin-top:12px">
         <div class="borField"><label>Periode Mingguan</label><select id="borPaymentPeriod" onchange="borPaymentPreview()"></select></div>
+        <div class="borField"><label>Model Rekap / Pembayaran</label><select id="borPaymentMode" onchange="borPaymentPreview()"><option value="individual">Masing-masing nama (slip terpisah)</option><option value="combined">Gabungan Indra + Heru (satu pembayaran &amp; satu slip)</option></select></div>
         <div class="borField"><label>Tanggal Bayar</label><input id="borPaymentDate" type="date"></div>
         <div class="borField"><label>Metode</label><select id="borPaymentMethod"><option>TRANSFER</option><option>TUNAI</option><option>LAINNYA</option></select></div>
         <div class="borField" style="grid-column:span 2"><label>Keterangan</label><input id="borPaymentNote" placeholder="Opsional"></div>
@@ -2312,8 +2313,10 @@ function workerName(id){return S.workers.find(x=>x.id===id)?.name||'Tanpa Nama'}
 function entryTotal(x){return num(x.amount)||num(x.qty)*num(x.rate)}
 function paymentsFor(period,workerId){return S.payments.filter(x=>x.period===period&&x.workerId===workerId&&x.status==='DIBAYAR')}
 function paymentFor(period,workerId){return paymentsFor(period,workerId).slice().sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate)))[0]}
-function paidFor(period,workerId){return paymentsFor(period,workerId).reduce((s,x)=>s+num(x.amount),0)}
-function grossPaidFor(period,workerId){return paymentsFor(period,workerId).reduce((s,x)=>s+num(x.grossAmount??(num(x.amount)+num(x.kasbonAmount))),0)}
+function paidFor(period,workerId){return S.payments.filter(x=>x.period===period&&x.status==='DIBAYAR'&&(x.workerId===workerId||x.workerIds?.includes(workerId))).reduce((s,x)=>s+(x.netByWorker&&x.netByWorker[workerId]!=null?num(x.netByWorker[workerId]):x.workerId===workerId?num(x.amount):0),0)}
+function grossPaidFor(period,workerId){return S.payments.filter(x=>x.period===period&&x.status==='DIBAYAR'&&(x.workerId===workerId||x.workerIds?.includes(workerId))).reduce((s,x)=>s+(x.grossByWorker&&x.grossByWorker[workerId]!=null?num(x.grossByWorker[workerId]):x.workerId===workerId?num(x.grossAmount??(num(x.amount)+num(x.kasbonAmount))):0),0)}
+function groupWorkers(){return ['Indra','Heru'].map(n=>S.workers.find(w=>String(w.name).trim().toLowerCase()===n.toLowerCase())).filter(Boolean)}
+function paymentMode(){return el('borPaymentMode')?.value||'individual'}
 function kasbonRemaining(k){return Math.max(0,num(k.amount)-num(k.deductedAmount))}
 function kasbonForPeriod(period,workerId,readyOnly=true){
  return (S.kasbons||[]).filter(k=>k.workerId===workerId&&k.status!=='DIBATALKAN'&&kasbonRemaining(k)>0&&(!readyOnly||k.selectedForPayroll===true));
@@ -2428,9 +2431,9 @@ function syncCash(){
    db.transactions[mk].operasional=Array.isArray(db.transactions[mk].operasional)?db.transactions[mk].operasional:[];
    db.transactions[mk].operasional.push({
      id:'BORPAY-'+p.id,date:p.paymentDate.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$3/$2/$1'),paymentDate:p.paymentDate,
-     description:'Pembayaran Borongan - '+workerName(p.workerId)+' - '+periodLabel(p.period)+(num(p.kasbonAmount)>0?' - setelah potong kasbon':''),
+     description:'Pembayaran Borongan - '+(p.workerLabel||workerName(p.workerId))+' - '+periodLabel(p.period)+(num(p.kasbonAmount)>0?' - setelah potong kasbon':''),
      amount:p.amount,grossAmount:num(p.grossAmount)||num(p.amount)+num(p.kasbonAmount),kasbonAmount:num(p.kasbonAmount),category:'BORONGAN',source:'BORONGAN_PAYROLL',boronganPaymentId:p.id,boronganPeriod:p.period,
-     workerId:p.workerId,worker:workerName(p.workerId),method:p.method,note:p.note,syncedAt:new Date().toISOString()
+     workerId:p.workerId,worker:(p.workerLabel||workerName(p.workerId)),method:p.method,note:p.note,syncedAt:new Date().toISOString()
    });
  });
  writeCash(db);
@@ -2566,49 +2569,59 @@ window.borRenderKasbon=function(){
  }).join(''):'<tr><td colspan="7">Belum ada kasbon.</td></tr>';
 };
 window.borPaymentPreview=function(){
- load();const p=el('borPaymentPeriod')?.value||activePeriods()[0],rows=recap(p);
- const data=rows.map(x=>{const grossPaid=grossPaidFor(p,x.workerId),grossDue=Math.max(0,x.total-grossPaid),kb=kasbonToDeduct(p,x.workerId,grossDue),netDue=Math.max(0,grossDue-kb.total);return {...x,grossPaid,grossDue,kb:kb.total,netDue}});
- const total=data.reduce((s,x)=>s+x.total,0),ded=data.reduce((s,x)=>s+x.kb,0),net=data.reduce((s,x)=>s+x.netDue,0);
+ load();const p=el('borPaymentPeriod')?.value||activePeriods()[0],mode=paymentMode();
+ let data;
+ if(mode==='combined'){
+   const ws=groupWorkers(),ids=ws.map(w=>w.id),rows=ids.map(id=>{const x=recap(p).find(r=>r.workerId===id)||{workerId:id,count:0,qty:0,total:0};const grossPaid=grossPaidFor(p,id),grossDue=Math.max(0,x.total-grossPaid),kb=kasbonToDeduct(p,id,grossDue);return {...x,grossPaid,grossDue,kb:kb.total,netDue:Math.max(0,grossDue-kb.total),kasbonItems:kb.items}});
+   data=[{workerId:'__GROUP__',workerLabel:'Indra + Heru (Gabungan)',count:rows.reduce((a,x)=>a+x.count,0),qty:rows.reduce((a,x)=>a+x.qty,0),total:rows.reduce((a,x)=>a+x.total,0),grossPaid:rows.reduce((a,x)=>a+x.grossPaid,0),grossDue:rows.reduce((a,x)=>a+x.grossDue,0),kb:rows.reduce((a,x)=>a+x.kb,0),netDue:rows.reduce((a,x)=>a+x.netDue,0),groupRows:rows}];
+ }else{
+   data=recap(p).map(x=>{const grossPaid=grossPaidFor(p,x.workerId),grossDue=Math.max(0,x.total-grossPaid),kb=kasbonToDeduct(p,x.workerId,grossDue);return {...x,grossPaid,grossDue,kb:kb.total,netDue:Math.max(0,grossDue-kb.total)}});
+ }
+ const total=data.reduce((s,x)=>s+x.grossDue,0),ded=data.reduce((s,x)=>s+x.kb,0),net=data.reduce((s,x)=>s+x.netDue,0);
  el('borPaymentSummary').innerHTML='<div class="borGrid">'+
    '<div class="borMetric borCard"><small>Periode</small><b>'+esc(periodLabel(p))+'</b></div>'+
-   '<div class="borMetric borCard"><small>Pekerja</small><b>'+data.length+'</b></div>'+
-   '<div class="borMetric borCard"><small>Gaji Kotor</small><b>'+money(total)+'</b></div>'+
+   '<div class="borMetric borCard"><small>Rekap Pembayaran</small><b>'+(mode==='combined'?'Gabungan':'Per Nama')+'</b></div>'+
+   '<div class="borMetric borCard"><small>Gaji Kotor Belum Dibayar</small><b>'+money(total)+'</b></div>'+
    '<div class="borMetric borCard"><small>Kasbon Dipotong</small><b>'+money(ded)+'</b></div></div>'+
-   '<div class="borInfo borOk" style="margin-bottom:10px">Estimasi gaji bersih yang akan dibayar: <b>'+money(net)+'</b>. Hanya kasbon yang <b>dipilih untuk pembayaran</b> yang masuk perhitungan. Potongan otomatis terjadi saat tombol <b>Proses Pembayaran</b> dijalankan.</div>'+
-   '<div style="overflow:auto"><table class="borTable"><thead><tr><th>Pekerja</th><th>Gaji Kotor</th><th>Sudah Dibayar</th><th>Kasbon</th><th>Gaji Bersih</th><th>Status</th></tr></thead><tbody>'+
-   (data.length?data.map(x=>{const status=x.netDue<=0&&x.total>0?'DIBAYAR':x.grossPaid<=0?'BELUM DIBAYAR':'KURANG BAYAR';return '<tr><td>'+esc(workerName(x.workerId))+'</td><td>'+money(x.total)+'</td><td>'+money(x.grossPaid)+'</td><td>'+money(x.kb)+'</td><td><b>'+money(x.netDue)+'</b></td><td><span class="borStatus '+(status==='DIBAYAR'?'paid':'')+'">'+status+'</span></td></tr>'}).join(''):'<tr><td colspan="6">Belum ada data.</td></tr>')+
+   '<div class="borInfo borOk" style="margin-bottom:10px">Estimasi bersih: <b>'+money(net)+'</b>. '+(mode==='combined'?'Indra + Heru dibayar sebagai satu total gabungan; mereka membagi sendiri.':'Setiap pekerja dibayar dan mendapat slip masing-masing.')+' Hanya kasbon yang dicentang yang dipotong.</div>'+
+   '<div style="overflow:auto"><table class="borTable"><thead><tr><th>Nama / Grup</th><th>Gaji Kotor</th><th>Sudah Dibayar</th><th>Kasbon</th><th>Gaji Bersih</th><th>Status</th></tr></thead><tbody>'+
+   (data.length?data.map(x=>{const status=x.netDue<=0&&x.total>0?'DIBAYAR':x.grossPaid<=0?'BELUM DIBAYAR':'KURANG BAYAR';return '<tr><td>'+esc(x.workerLabel||workerName(x.workerId))+'</td><td>'+money(x.grossDue)+'</td><td>'+money(x.grossPaid)+'</td><td>'+money(x.kb)+'</td><td><b>'+money(x.netDue)+'</b></td><td><span class="borStatus '+(status==='DIBAYAR'?'paid':'')+'">'+status+'</span></td></tr>'}).join(''):'<tr><td colspan="6">Belum ada data.</td></tr>')+
    '</tbody></table></div>';
 };
 window.borProcessPayment=function(){
- load();const period=el('borPaymentPeriod').value,date=el('borPaymentDate').value,method=el('borPaymentMethod').value,note=el('borPaymentNote').value.trim();
+ load();const period=el('borPaymentPeriod').value,date=el('borPaymentDate').value,method=el('borPaymentMethod').value,note=el('borPaymentNote').value.trim(),mode=paymentMode();
  if(!date){alert('Tanggal pembayaran wajib dipilih.');return}
- const rows=recap(period).map(x=>{
-   const grossPaid=grossPaidFor(period,x.workerId),grossOutstanding=Math.max(0,x.total-grossPaid),kb=kasbonToDeduct(period,x.workerId,grossOutstanding);
-   return {...x,grossOutstanding,kasbonAmount:kb.total,netAmount:Math.max(0,grossOutstanding-kb.total),kasbonItems:kb.items};
- }).filter(x=>x.grossOutstanding>0);
+ let rows=[];
+ if(mode==='combined'){
+   const ws=groupWorkers();if(ws.length!==2){alert('Mode gabungan membutuhkan data pekerja bernama Indra dan Heru. Periksa daftar pekerja terlebih dahulu.');return}
+   rows=ws.map(w=>{const x=recap(period).find(r=>r.workerId===w.id)||{workerId:w.id,count:0,qty:0,total:0};const grossPaid=grossPaidFor(period,w.id),grossOutstanding=Math.max(0,x.total-grossPaid),kb=kasbonToDeduct(period,w.id,grossOutstanding);return {...x,grossOutstanding,kasbonAmount:kb.total,netAmount:Math.max(0,grossOutstanding-kb.total),kasbonItems:kb.items}}).filter(x=>x.grossOutstanding>0);
+ }else{
+   rows=recap(period).map(x=>{const grossPaid=grossPaidFor(period,x.workerId),grossOutstanding=Math.max(0,x.total-grossPaid),kb=kasbonToDeduct(period,x.workerId,grossOutstanding);return {...x,grossOutstanding,kasbonAmount:kb.total,netAmount:Math.max(0,grossOutstanding-kb.total),kasbonItems:kb.items}}).filter(x=>x.grossOutstanding>0);
+ }
  if(!rows.length){alert('Semua pekerja pada periode ini sudah dibayar atau belum ada data.');return}
  const totalGross=rows.reduce((s,x)=>s+x.grossOutstanding,0),totalKasbon=rows.reduce((s,x)=>s+x.kasbonAmount,0),totalNet=rows.reduce((s,x)=>s+x.netAmount,0);
- if(!confirm('Proses pembayaran '+rows.length+' pekerja untuk '+periodLabel(period)+'?\\n\\nGaji kotor: '+money(totalGross)+'\\nPotongan kasbon: '+money(totalKasbon)+'\\nGaji bersih dibayar: '+money(totalNet)))return;
+ if(!confirm('Proses pembayaran '+(mode==='combined'?'GABUNGAN Indra + Heru (satu pembayaran)':'masing-masing pekerja')+' untuk '+periodLabel(period)+'?\n\nGaji kotor: '+money(totalGross)+'\nPotongan kasbon: '+money(totalKasbon)+'\nGaji bersih dibayar: '+money(totalNet)))return;
  const now=new Date().toISOString();
- rows.forEach(x=>{
-   const pay={id:uid('P'),period,workerId:x.workerId,paymentDate:date,method,note,amount:x.netAmount,grossAmount:x.grossOutstanding,kasbonAmount:x.kasbonAmount,status:'DIBAYAR',processedAt:now};
-   S.payments.push(pay);
-   (x.kasbonItems||[]).forEach(item=>{
-     const k=item.k;k.deductedAmount=num(k.deductedAmount)+item.take;k.paymentId=pay.id;k.deductedPeriod=period;k.deductedAt=now;
-     k.status=kasbonRemaining(k)<=0?'TERPOTONG':'TERPOTONG SEBAGIAN';
-   });
- });
- save();syncCash();borRender();alert('Pembayaran borongan berhasil. Kasbon yang dipilih dipotong otomatis dari gaji kotor dan yang masuk Kas Besar hanya gaji bersih.');
+ if(mode==='combined'){
+   const ids=rows.map(x=>x.workerId),grossByWorker={},netByWorker={};rows.forEach(x=>{grossByWorker[x.workerId]=x.grossOutstanding;netByWorker[x.workerId]=x.netAmount});
+   const pay={id:uid('P'),period,workerId:'__GROUP__',workerIds:ids,workerLabel:'Indra + Heru (Gabungan)',grossByWorker,netByWorker,paymentDate:date,method,note,amount:totalNet,grossAmount:totalGross,kasbonAmount:totalKasbon,status:'DIBAYAR',processedAt:now,mode:'combined'};S.payments.push(pay);
+   rows.forEach(x=>(x.kasbonItems||[]).forEach(item=>{const k=item.k;k.deductedAmount=num(k.deductedAmount)+item.take;k.paymentId=pay.id;k.deductedPeriod=period;k.deductedAt=now;k.status=kasbonRemaining(k)<=0?'TERPOTONG':'TERPOTONG SEBAGIAN'}));
+ }else{
+   rows.forEach(x=>{const pay={id:uid('P'),period,workerId:x.workerId,paymentDate:date,method,note,amount:x.netAmount,grossAmount:x.grossOutstanding,kasbonAmount:x.kasbonAmount,status:'DIBAYAR',processedAt:now,mode:'individual'};S.payments.push(pay);(x.kasbonItems||[]).forEach(item=>{const k=item.k;k.deductedAmount=num(k.deductedAmount)+item.take;k.paymentId=pay.id;k.deductedPeriod=period;k.deductedAt=now;k.status=kasbonRemaining(k)<=0?'TERPOTONG':'TERPOTONG SEBAGIAN'});});
+ }
+ save();syncCash();borRender();alert('Pembayaran borongan berhasil. Kasbon terpilih sudah dipotong dan Kas Besar mencatat nilai bersih yang dibayar.');
 };
 window.borCancelPayment=function(id){
  if(!confirm('Batalkan pembayaran ini? Transaksi terkait akan dihapus dari Kas Besar.'))return;load();S.payments=S.payments.map(x=>x.id===id?{...x,status:'DIBATALKAN',cancelledAt:new Date().toISOString()}:x);save();syncCash();borRender();
 };
 window.borFillSlipWorkers=function(){
  load();const p=el('borSlipPeriod')?.value||activePeriods()[0],sel=el('borSlipWorker');if(!sel)return;
- const ids=[...new Set(entriesFor(p).map(x=>x.workerId))];const old=sel.value;sel.innerHTML=ids.map(id=>'<option value="'+id+'">'+esc(workerName(id))+'</option>').join('');sel.value=ids.includes(old)?old:(ids[0]||'');
+ const ids=[...new Set(entriesFor(p).map(x=>x.workerId))];const old=sel.value;let html=ids.map(id=>'<option value="'+id+'">'+esc(workerName(id))+'</option>').join('');if(S.payments.some(x=>x.period===p&&x.mode==='combined'&&x.status==='DIBAYAR'))html='<option value="__GROUP__">Indra + Heru (Gabungan)</option>'+html;sel.innerHTML=html;sel.value=[...sel.options].some(o=>o.value===old)?old:(sel.options[0]?.value||'');borRenderSlip();
 };
 window.borRenderSlip=function(){
- load();const p=el('borSlipPeriod')?.value||activePeriods()[0],wid=el('borSlipWorker')?.value,rows=entriesFor(p,wid),pay=paymentFor(p,wid),total=rows.reduce((s,x)=>s+entryTotal(x),0),grossPaid=grossPaidFor(p,wid),grossDue=Math.max(0,total-grossPaid),kb=pay?num(pay.kasbonAmount):kasbonToDeduct(p,wid,grossDue).total,net=pay?num(pay.amount):Math.max(0,grossDue-kb),status=pay?'DIBAYAR':(grossDue>0?'BELUM DIBAYAR':'DIBAYAR');
+ load();const p=el('borSlipPeriod')?.value||activePeriods()[0],wid=el('borSlipWorker')?.value;
+ if(wid==='__GROUP__'){const pay=S.payments.filter(x=>x.period===p&&x.mode==='combined'&&x.status==='DIBAYAR').sort((a,b)=>String(b.paymentDate).localeCompare(String(a.paymentDate)))[0];const ids=pay?.workerIds||groupWorkers().map(w=>w.id),rows=entriesFor(p).filter(x=>ids.includes(x.workerId)),total=rows.reduce((a,x)=>a+entryTotal(x),0),kb=pay?num(pay.kasbonAmount):ids.reduce((a,id)=>a+kasbonToDeduct(p,id,Math.max(0,recap(p).find(r=>r.workerId===id)?.total||0)).total,0),net=pay?num(pay.amount):Math.max(0,total-kb),kbs=pay?(S.kasbons||[]).filter(k=>k.paymentId===pay.id&&num(k.deductedAmount)>0).map(k=>({k,amount:num(k.deductedAmount)})):ids.flatMap(id=>kasbonToDeduct(p,id,Math.max(0,recap(p).find(r=>r.workerId===id)?.total||0)).items.map(item=>({k:item.k,amount:item.take})));el('borSlipArea').innerHTML='<div class="borSlipHead"><div><h2>BERKAH MULIA ADV</h2><div>SLIP PEMBAYARAN BORONGAN — GABUNGAN</div></div><div style="text-align:right"><b>'+esc(periodLabel(p))+'</b><br><small>'+esc(pay?.paymentDate||'Belum dibayar')+'</small></div></div><table class="borTable"><tbody><tr><td>Nama / Grup</td><td><b>Indra + Heru (Gabungan)</b></td></tr><tr><td>Status</td><td>'+(pay?'DIBAYAR':'BELUM DIBAYAR')+'</td></tr><tr><td>Metode</td><td>'+esc(pay?.method||'-')+'</td></tr><tr><td>Gaji Kotor Gabungan</td><td>'+money(total)+'</td></tr><tr><td>Potongan Kasbon Gabungan</td><td>'+money(kb)+'</td></tr><tr><td><b>Gaji Bersih Gabungan</b></td><td><b>'+money(net)+'</b></td></tr></tbody></table>'+(kbs.length?'<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Nama</th><th>Kebutuhan</th><th>Tanggal Kasbon</th><th>Nominal Dipotong</th></tr></thead><tbody>'+kbs.map(item=>'<tr><td>'+esc(workerName(item.k.workerId))+'</td><td>'+esc(item.k.need||'-')+'</td><td>'+esc(item.k.date)+'</td><td>'+money(item.amount)+'</td></tr>').join('')+'</tbody></table></div>':'')+'<div style="overflow:auto;margin-top:15px"><table class="borTable"><thead><tr><th>Tanggal</th><th>Nama</th><th>Pekerjaan</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.date)+'</td><td>'+esc(workerName(x.workerId))+'</td><td>'+esc(x.description)+'</td><td>'+x.qty+'</td><td>'+esc(x.unit||'-')+'</td><td>'+money(x.rate)+'</td><td>'+money(entryTotal(x))+'</td></tr>').join('')+'</tbody></table></div><div class="borSlipTotal"><span>GAJI KOTOR GABUNGAN</span><span>'+money(total)+'</span></div><div class="borSlipTotal"><span>POTONGAN KASBON</span><span>- '+money(kb)+'</span></div><div class="borSlipTotal"><span>GAJI BERSIH GABUNGAN</span><span>'+money(net)+'</span></div><div style="margin-top:30px;text-align:center">Penerima: Indra + Heru (pembagian dilakukan sendiri)</div>';return;}
+ const rows=entriesFor(p,wid),pay=paymentFor(p,wid),total=rows.reduce((s,x)=>s+entryTotal(x),0),grossPaid=grossPaidFor(p,wid),grossDue=Math.max(0,total-grossPaid),kb=pay?num(pay.kasbonAmount):kasbonToDeduct(p,wid,grossDue).total,net=pay?num(pay.amount):Math.max(0,grossDue-kb),status=pay?'DIBAYAR':(grossDue>0?'BELUM DIBAYAR':'DIBAYAR');
  const kbs=pay
   ? (S.kasbons||[]).filter(k=>k.workerId===wid&&num(k.deductedAmount)>0&&k.paymentId===pay.id).map(k=>({k,amount:num(k.deductedAmount)}))
   : kasbonToDeduct(p,wid,grossDue).items.map(item=>({k:item.k,amount:item.take}));
